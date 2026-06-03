@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../routes/app_routes.dart';
+import '../../themes/app_colors.dart';
+import '../../themes/app_textstyles.dart';
 import '../../viewmodels/splash_viewmodel.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -14,57 +17,76 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _logoController;
   late AnimationController _textController;
 
-  late Animation<double> _logoReveal;
+  late Animation<double> _logoOpacity;
   late Animation<double> _logoScale;
   late Animation<double> _textOpacity;
-  late Animation<double> _taglineOpacity;
+  late Animation<Offset> _textSlide;
 
   @override
   void initState() {
     super.initState();
 
-
     _logoController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
+
+    _textController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
 
-    _logoReveal = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _logoController, curve: Curves.easeOut),
+    _logoOpacity = CurvedAnimation(
+      parent: _logoController,
+      curve: Curves.easeInOutCubic,
     );
 
-    _logoScale = Tween<double>(begin: 0.85, end: 1).animate(
-      CurvedAnimation(parent: _logoController, curve: Curves.easeOutBack),
+    _logoScale = Tween<double>(begin: 0.88, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _logoController,
+        curve: Curves.easeOutCubic,
+      ),
     );
 
-
-    _textController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 250),
+    _textOpacity = CurvedAnimation(
+      parent: _textController,
+      curve: Curves.easeInOutCubic,
     );
 
-    _textOpacity = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _textController, curve: Curves.easeIn),
-    );
-
-    _taglineOpacity = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _textController, curve: Curves.easeIn),
+    _textSlide = Tween<Offset>(
+      begin: const Offset(0, 0.06),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _textController,
+        curve: Curves.easeOutCubic,
+      ),
     );
 
     _startAnimation();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    precacheImage(const AssetImage('assets/images/logobp.png'), context);
+  }
+
   Future<void> _startAnimation() async {
-    await _logoController.forward();
+    await Future.delayed(const Duration(milliseconds: 200));
+    if (!mounted) return;
 
-    await Future.delayed(const Duration(milliseconds: 150));
-    await _textController.forward();
+    _logoController.forward();
 
-    await Future.delayed(const Duration(milliseconds: 450));
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (!mounted) return;
 
-    if (mounted) {
-      context.read<SplashViewModel>().initialize(context);
-    }
+    _textController.forward();
+
+    await Future.delayed(const Duration(seconds: 3));
+    if (!mounted) return;
+
+    context.read<SplashViewModel>().initialize(context);
   }
 
   @override
@@ -76,114 +98,63 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-
-    final mediaQuery = MediaQuery.of(context);
-    final screenWidth = mediaQuery.size.width;
-
-
-    final textScaler = mediaQuery.textScaler;
-
-
-    final logoSize = screenWidth * 0.90;
-    final progressWidth = screenWidth * 0.70;
-
-
-    final titleFontSize = textScaler.scale((screenWidth * 0.15).clamp(38.0, 50.0));
-    final taglineFontSize = textScaler.scale((screenWidth * 0.045).clamp(15.0, 19.0));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.darkBg : AppColors.lightBg;
+    final textColor = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
+    final subTextColor = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: bgColor,
       body: Center(
-        child: SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(), // Keeps layout locked & stable
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-
-              AnimatedBuilder(
-                animation: _logoController,
-                builder: (context, child) {
-                  return Transform.scale(
-                    scale: _logoScale.value,
-                    child: ClipRect(
-                      child: Align(
-                        alignment: Alignment.bottomCenter,
-                        heightFactor: _logoReveal.value,
-                        child: child,
-                      ),
-                    ),
-                  );
-                },
-                child: Image(
-                  image: const AssetImage('assets/images/logobp.png'),
-                  width: logoSize,
-                  height: logoSize,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            FadeTransition(
+              opacity: _logoOpacity,
+              child: ScaleTransition(
+                scale: _logoScale,
+                child: Image.asset(
+                  'assets/images/logobp.png',
+                  width: 290,
+                  height: 290,
                   fit: BoxFit.contain,
                 ),
               ),
-
-              SizedBox(height: screenWidth * 0.07), // Scalable gap
-
-              /// APP NAME
-              FadeTransition(
+            ),
+            const SizedBox(height: 28),
+            SlideTransition(
+              position: _textSlide,
+              child: FadeTransition(
                 opacity: _textOpacity,
-                child: Text.rich(
-                  textAlign: TextAlign.center,
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: "Be ",
-                        style: TextStyle(
-                          fontSize: titleFontSize,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF111827),
-                        ),
+                child: Column(
+                  children: [
+                    Text(
+                      'Be Practical',
+                      style: AppTextStyles.headlineLarge.copyWith(
+                        color: textColor,
+                        fontSize: 45,
+                        fontWeight: FontWeight.w800,
                       ),
-                      TextSpan(
-                        text: "Practical",
-                        style: TextStyle(
-                          fontSize: titleFontSize,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF0A66C2),
-                        ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Learn • Apply • Grow',
+                      style: AppTextStyles.labelMedium.copyWith(
+                        color: subTextColor,
+                        letterSpacing: 1.5,
+                        fontSize: 16,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-
-              SizedBox(height: screenWidth * 0.03),
-
-              /// TAGLINE
-              FadeTransition(
-                opacity: _taglineOpacity,
-                child: Text(
-                  "LEARN • APPLY • GROW",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: taglineFontSize,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 4,
-                    color: const Color(0xFF374151),
-                    height: 1.5, // Essential line-height to prevent letter clipping
-                  ),
-                ),
-              ),
-
-              SizedBox(height: screenWidth * 0.12),
-
-              /// PROGRESS BAR
-              SizedBox(
-                width: progressWidth,
-                child: const LinearProgressIndicator(
-                  backgroundColor: Color(0xFFE5E7EB),
-                  color: Color(0xFF0A66C2),
-                  minHeight: 4,
-                ),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 32),
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              strokeWidth: 2.4,
+            ),
+          ],
         ),
       ),
     );
