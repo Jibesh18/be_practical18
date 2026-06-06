@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:go_router/go_router.dart';
@@ -34,22 +33,24 @@ class _CameraScreenState extends State<CameraScreen> {
       if (_disposed) return;
 
       if (_cameras.isEmpty) {
-        setState(() {
-          _hasError = true;
-          _errorMessage = 'No camera hardware detected';
-        });
+        if (mounted) {
+          setState(() {
+            _hasError = true;
+            _errorMessage = 'No camera hardware detected';
+          });
+        }
         return;
       }
 
       // Default to Front Camera for Profile Identity
       int frontCamIndex = _cameras.indexWhere(
-          (cam) => cam.lensDirection == CameraLensDirection.front);
-      
+              (cam) => cam.lensDirection == CameraLensDirection.front);
+
       _selectedCameraIndex = frontCamIndex != -1 ? frontCamIndex : 0;
       await _startCamera(_selectedCameraIndex);
 
     } catch (e) {
-      if (!_disposed) {
+      if (!_disposed && mounted) {
         setState(() {
           _hasError = true;
           _errorMessage = 'Initialization failed: $e';
@@ -104,9 +105,11 @@ class _CameraScreenState extends State<CameraScreen> {
         context.pop(file.path);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Capture Failed: $e'), backgroundColor: AppColors.error),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Capture Failed: $e'), backgroundColor: AppColors.error),
+        );
+      }
     }
   }
 
@@ -146,10 +149,10 @@ class _CameraScreenState extends State<CameraScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withValues(alpha: 0.4),
+                    Colors.black.withOpacity(0.4),
                     Colors.transparent,
                     Colors.transparent,
-                    Colors.black.withValues(alpha: 0.6),
+                    Colors.black.withOpacity(0.6),
                   ],
                 ),
               ),
@@ -172,7 +175,7 @@ class _CameraScreenState extends State<CameraScreen> {
                       Text(
                         'IDENTITY CAPTURE',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9),
+                          color: Colors.white.withOpacity(0.9),
                           fontWeight: FontWeight.w900,
                           letterSpacing: 2,
                           fontSize: 12,
@@ -186,7 +189,7 @@ class _CameraScreenState extends State<CameraScreen> {
                   ),
                 ),
                 const Spacer(),
-                
+
                 // 4. SHUTTER BUTTON AREA
                 Padding(
                   padding: const EdgeInsets.only(bottom: 40),
@@ -194,7 +197,7 @@ class _CameraScreenState extends State<CameraScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       const SizedBox(width: 60), // Spacer
-                      
+
                       GestureDetector(
                         onTap: _takePicture,
                         child: Container(
@@ -236,7 +239,7 @@ class _CameraScreenState extends State<CameraScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.camera_off_rounded, color: Colors.white24, size: 80),
+            const Icon(Icons.no_photography_rounded, color: Colors.white24, size: 80),
             const SizedBox(height: 24),
             Text(
               _errorMessage,
@@ -255,4 +258,3 @@ class _CameraScreenState extends State<CameraScreen> {
     );
   }
 }
-
