@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
+
 import '../views/screens/splash_screen.dart';
 import '../views/screens/login_screen.dart';
 import '../views/screens/register_screen.dart';
+import '../views/widgets/auth_gate.dart';
 
 class AppRoutes {
   static const String splash = '/';
   static const String login = '/login';
   static const String register = '/register';
+  static const String authGate = '/authGate';
 
   static Map<String, WidgetBuilder> get routes => {
     splash: (context) => const SplashScreen(),
     login: (context) => const LoginScreen(),
     register: (context) => const RegisterScreen(),
+    authGate: (context) => const AuthGate(),
   };
 
   static Route<dynamic> smoothRoute(Widget page) {
