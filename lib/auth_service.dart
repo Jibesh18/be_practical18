@@ -16,7 +16,7 @@ class AuthService {
         email: email,
         password: password,
       ).timeout(const Duration(seconds: 15));
-      
+
       // Reload user to fetch the latest 'emailVerified' status from Firebase servers
       await credential.user?.reload();
       final user = _auth.currentUser;
@@ -47,7 +47,7 @@ class AuthService {
       if (credential.user != null) {
         // 1. Set the name in Firebase Auth profile
         await credential.user!.updateDisplayName(name);
-        
+
         // 2. Send the real verification link to their Gmail
         await credential.user!.sendEmailVerification();
 
@@ -66,7 +66,7 @@ class AuthService {
           'headline': 'Future Specialist',
           'createdAt': FieldValue.serverTimestamp(),
         });
-        
+
         // Sign out after signup so they must log in AFTER verifying their email
         await _auth.signOut();
       }
@@ -84,6 +84,22 @@ class AuthService {
     }
   }
 
+  /// CHECK EMAIL VERIFICATION: Checks if the user has clicked the link
+  Future<bool> checkEmailVerified() async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    await user.reload();
+    return user.emailVerified;
+  }
+
+  /// RESEND VERIFICATION: Sends the link again
+  Future<void> resendVerificationEmail() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await user.sendEmailVerification();
+    }
+  }
+
   /// FETCH USER DATA: Retrieves the premium 3D profile data from Firestore
   Future<model.User?> getUserData() async {
     final user = _auth.currentUser;
@@ -94,7 +110,7 @@ class AuthService {
       if (!doc.exists) return null;
 
       final data = doc.data()!;
-      
+
       // DEEP FIX: Added null-safety fallbacks for all fields to prevent dashboard crashes
       return model.User(
         id: data['id'] ?? user.uid,
@@ -109,11 +125,11 @@ class AuthService {
         xp: data['xp'] ?? 0,
         nextLevelXp: data['nextLevelXp'] ?? 1000,
         settings: model.UserSettings(),
-        skills: [], 
+        skills: [],
         stats: model.UserStats(
-          applicationsSubmitted: 0, 
-          interviewsScheduled: 0, 
-          offersReceived: 0, 
+          applicationsSubmitted: 0,
+          interviewsScheduled: 0,
+          offersReceived: 0,
           learningStreak: 1,
         ),
       );
