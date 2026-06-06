@@ -96,33 +96,69 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }).toList();
 
     if (filtered.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      return RefreshIndicator(
+        onRefresh: () async => ref.refresh(notificationsStreamProvider),
+        color: AppColors.accent,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            const Text('🔔', style: TextStyle(fontSize: 48)),
+            SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+            const Center(child: Text('🔔', style: TextStyle(fontSize: 48))),
             const SizedBox(height: 16),
-            Text('No notifications here', style: AppTextStyles.body.copyWith(color: AppColors.muted)),
+            Center(child: Text('No notifications here', style: AppTextStyles.body.copyWith(color: AppColors.muted))),
           ],
         ),
       );
     }
 
-    return ListView.builder(
+    return RefreshIndicator(
+      onRefresh: () async => ref.refresh(notificationsStreamProvider),
+      color: AppColors.accent,
+      child: ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       itemCount: filtered.length,
       itemBuilder: (context, index) {
         final notif = filtered[index];
+        IconData icon = Icons.notifications_active_rounded;
+        Color iconColor = AppColors.accent;
+
+        switch (notif.type) {
+          case 'internship':
+            icon = Icons.work_rounded;
+            iconColor = AppColors.primary;
+            break;
+          case 'xp':
+            icon = Icons.star_rounded;
+            iconColor = Colors.orange;
+            break;
+          case 'announcement':
+            icon = Icons.campaign_rounded;
+            iconColor = AppColors.secondary;
+            break;
+        }
+
         return Dismissible(
           key: Key(notif.id),
-          direction: DismissDirection.endToStart,
+          direction: DismissDirection.horizontal,
           background: Container(
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.only(left: 20),
+            decoration: BoxDecoration(color: AppColors.accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)),
+            child: const Icon(Icons.archive_rounded, color: AppColors.accent),
+          ),
+          secondaryBackground: Container(
             alignment: Alignment.centerRight,
             padding: const EdgeInsets.only(right: 20),
             decoration: BoxDecoration(color: Colors.redAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)),
-            child: const Icon(Icons.archive_rounded, color: Colors.redAccent),
+            child: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
           ),
-          onDismissed: (_) => ref.read(notificationActionProvider.notifier).archiveNotification(notif.id),
+          onDismissed: (direction) {
+            if (direction == DismissDirection.startToEnd) {
+              ref.read(notificationActionProvider.notifier).archiveNotification(notif.id);
+            } else {
+              ref.read(notificationActionProvider.notifier).deleteNotification(notif.id);
+            }
+          },
           child: Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: GestureDetector(
@@ -130,15 +166,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               child: NotificationItem(
                 title: notif.title,
                 description: notif.message,
-                time: notif.time,
-                icon: Icons.notifications_active_rounded,
-                iconColor: AppColors.accent,
+                time: _formatTime(notif.time),
+                icon: icon,
+                iconColor: iconColor,
                 isUnread: !notif.read,
               ),
             ),
-          ),
-        ).animate().fadeIn(delay: (index * 30).ms);
-      },
-    );
-  }
-}
+ 
