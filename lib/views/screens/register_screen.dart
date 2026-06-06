@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../../routes/app_routes.dart';
 import '../../themes/app_colors.dart';
 import '../../themes/app_textstyles.dart';
+import '../../viewmodels/auth_viewmodel.dart';
 
 enum RegisterType { employer, internSeeker }
 
@@ -32,10 +35,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _register() {
-    if (_formKey.currentState!.validate()) {
+  Future<void> _register() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final authVM = context.read<AuthViewModel>();
+    final success = await authVM.register(
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      password: _passwordController.text.trim(),
+      role: _selectedType == RegisterType.employer
+          ? 'employer'
+          : 'internSeeker',
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.authGate,
+            (route) => false,
+      );
+    } else if (authVM.errorMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Register pressed')),
+        SnackBar(
+          content: Text(authVM.errorMessage!),
+          backgroundColor: AppColors.error,
+        ),
       );
     }
   }
@@ -99,10 +126,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = Colors.grey.shade300;
+    // Fixed: was hardcoded to Colors.grey.shade300 regardless of theme
+    final bgColor = isDark ? AppColors.darkBg : AppColors.lightBg;
     final cardColor = isDark ? AppColors.darkSurface : Colors.white;
-    final titleColor = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
-    final subtitleColor = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final titleColor =
+    isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
+    final subtitleColor =
+    isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -119,7 +149,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   decoration: BoxDecoration(
                     color: cardColor,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.border.withOpacity(0.6)),
+                    border: Border.all(
+                        color: AppColors.border.withOpacity(0.6)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,7 +191,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 24),
                       TextFormField(
                         controller: _nameController,
-                        decoration: const InputDecoration(labelText: 'Full Name'),
+                        decoration:
+                        const InputDecoration(labelText: 'Full Name'),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Please enter your name';
@@ -172,7 +204,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(labelText: 'Email'),
+                        decoration:
+                        const InputDecoration(labelText: 'Email'),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Please enter your email';
@@ -222,12 +255,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             onPressed: () {
                               setState(() {
-                                _obscureConfirmPassword = !_obscureConfirmPassword;
+                                _obscureConfirmPassword =
+                                !_obscureConfirmPassword;
                               });
                             },
                           ),
                         ),
                         validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please confirm your password';
+                          }
                           if (value != _passwordController.text) {
                             return 'Passwords do not match';
                           }
@@ -235,13 +272,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         },
                       ),
                       const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 58,
-                        child: ElevatedButton(
-                          onPressed: _register,
-                          child: const Text('Register'),
-                        ),
+                      // Use Consumer so only the button rebuilds on loading change
+                      Consumer<AuthViewModel>(
+                        builder: (context, authVM, _) {
+                          return SizedBox(
+                            width: double.infinity,
+                            height: 58,
+                            child: ElevatedButton(
+                              onPressed: authVM.isLoading ? null : _register,
+                              child: authVM.isLoading
+                                  ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Colors.white,
+                                ),
+                              )
+                                  : const Text('Register'),
+                            ),
+                          );
+                        },
                       ),
                       const SizedBox(height: 18),
                       Center(
@@ -256,7 +307,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             TextButton(
                               onPressed: () {
-                                Navigator.pushNamed(context, AppRoutes.login);
+                                Navigator.pushNamed(
+                                    context, AppRoutes.login);
                               },
                               child: const Text('Login'),
                             ),
