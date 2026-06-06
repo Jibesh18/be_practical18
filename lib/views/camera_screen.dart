@@ -99,7 +99,6 @@ class _CameraScreenState extends State<CameraScreen> {
     if (_controller!.value.isTakingPicture) return;
 
     try {
-      // Shutter effect simulation
       final XFile file = await _controller!.takePicture();
       if (mounted) {
         context.pop(file.path);
@@ -196,7 +195,7 @@ class _CameraScreenState extends State<CameraScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      const SizedBox(width: 60), // Spacer
+                      const SizedBox(width: 60),
 
                       GestureDetector(
                         onTap: _takePicture,
@@ -210,7 +209,7 @@ class _CameraScreenState extends State<CameraScreen> {
                           child: Center(
                             child: Container(
                               width: 65,
-                              height: 60,
+                              height: 65,
                               decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: Colors.white,
@@ -220,7 +219,7 @@ class _CameraScreenState extends State<CameraScreen> {
                         ),
                       ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 3.seconds),
 
-                      const SizedBox(width: 60), // Spacer
+                      const SizedBox(width: 60),
                     ],
                   ),
                 ),
@@ -250,7 +249,7 @@ class _CameraScreenState extends State<CameraScreen> {
             ElevatedButton(
               onPressed: () => context.pop(),
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent),
-              child: const Text('GO BACK'),
+              child: const Text('GO BACK', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
