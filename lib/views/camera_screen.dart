@@ -149,10 +149,10 @@ class _CameraScreenState extends State<CameraScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.4),
+                    Colors.black.withValues(alpha: 0.4),
                     Colors.transparent,
                     Colors.transparent,
-                    Colors.black.withOpacity(0.6),
+                    Colors.black.withValues(alpha: 0.6),
                   ],
                 ),
               ),
@@ -175,7 +175,7 @@ class _CameraScreenState extends State<CameraScreen> {
                       Text(
                         'IDENTITY CAPTURE',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontWeight: FontWeight.w900,
                           letterSpacing: 2,
                           fontSize: 12,
