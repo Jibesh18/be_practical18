@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:math';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -62,6 +62,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> _init() async {
     try {
       await Future.delayed(const Duration(seconds: 3));
+      final fbUser = fb.FirebaseAuth.instance.currentUser;
+
+      if (fbUser != null && !fbUser.emailVerified) {
+        state = state.copyWith(isInitialized: true, isVerifying: true);
+        return;
+      }
+
       final user = await _authService.getUserData().timeout(
         const Duration(seconds: 15),
         onTimeout: () => null,
@@ -90,12 +97,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true, error: null, successMessage: null);
     try {
       await _authService.signUp(email, password, name).timeout(const Duration(seconds: 30));
-      final randomOtp = (1000 + Random().nextInt(9000)).toString();
-      debugPrint("DEBUG: CODE IS $randomOtp");
       state = state.copyWith(
         isLoading: false,
         isVerifying: true,
-        generatedCode: randomOtp,
         tempName: name,
         successMessage: 'Account created! Please check your Gmail to verify.',
       );
@@ -114,7 +118,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(user: user, isLoading: false, isVerifying: false);
       return true;
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: _cleanError(e.toString()));
+      final cleaned = _cleanError(e.toString());
+      if (cleaned.contains('verify your email')) {
+        state = state.copyWith(isLoading: false, isVerifying: true, successMessage: cleaned);
+        return true;
+      }
+      state = state.copyWith(isLoading: false, error: cleaned);
       return false;
     }
   }
@@ -129,17 +138,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> verifyCode(String code) async {
+  Future<bool> checkVerificationStatus() async {
     state = state.copyWith(isLoading: true, error: null);
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (code == state.generatedCode || code == "1234") {
-      final user = await _authService.getUserData();
-      final updatedUser = user?.copyWith(name: state.tempName) ?? state.user?.copyWith(name: state.tempName);
-      state = state.copyWith(isVerifying: false, user: updatedUser, isLoading: false, generatedCode: null);
-      return true;
+    try {
+      final isVerified = await _authService.checkEmailVerified();
+      if (isVerified) {
+        final user = await _authService.getUserData();
+        final updatedUser = user?.copyWith(name: state.tempName) ?? state.user?.copyWith(name: state.tempName);
+        state = state.copyWith(isVerifying: false, user: updatedUser, isLoading: false);
+        return true;
+      } else {
+        state = state.copyWith(isLoading: false, error: "Email not verified yet.");
+        return false;
+      }
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: _cleanError(e.toString()));
+      return false;
     }
-    state = state.copyWith(isLoading: false, error: "The code entered is invalid.");
-    return false;
+  }
+
+  Future<void> resendVerification() async {
+    state = state.copyWith(isLoading: true, error: null, successMessage: null);
+    try {
+      await _authService.resendVerificationEmail();
+      state = state.copyWith(isLoading: false, successMessage: "Verification email resent.");
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: _cleanError(e.toString()));
+    }
   }
 
   void updateName(String name) async {
@@ -157,12 +182,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(user: state.user!.copyWith(bio: bio));
   }
 
-  void updateAvatar(String path) async {
+  Future<void> updateAvatar(String path) async {
     if (state.user == null) return;
-    await _authService.updateAvatar(path);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_avatar', path);
-    state = state.copyWith(user: state.user!.copyWith(avatar: path));
+    try {
+      // Set loading state for avatar if needed, but here we just wait
+      final downloadUrl = await _authService.uploadAndUpdateAvatar(path);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_avatar', downloadUrl);
+      state = state.copyWith(user: state.user!.copyWith(avatar: downloadUrl));
+    } catch (e) {
+      debugPrint("Avatar upload failed: $e");
+    }
   }
 
   void addXp(int amount) {
