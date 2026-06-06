@@ -1,52 +1,213 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthViewModel extends ChangeNotifier {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+
   bool _isLoading = false;
+  String? _errorMessage;
+  String? _userRole;
+
   bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+  String? get userRole => _userRole;
+  User? get currentUser => _auth.currentUser;
 
-  Future<void> login({
-    required String email,
-    required String password,
-  }) async {
-    _isLoading = true;
+  void _setLoading(bool value) {
+    _isLoading = value;
     notifyListeners();
-
-    try {
-      await Future.delayed(const Duration(seconds: 2));
-      // Add login API / Firebase logic here
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
   }
 
-  Future<void> register({
+  void _setError(String? value) {
+    _errorMessage = value;
+    notifyListeners();
+  }
+
+  Future<bool> register({
     required String name,
     required String email,
     required String password,
+    required String role,
   }) async {
-    _isLoading = true;
-    notifyListeners();
+    _setLoading(true);
+    _setError(null);
 
     try {
-      await Future.delayed(const Duration(seconds: 2));
-      // Add register API / Firebase logic here
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password.trim(),
+      );
+
+      final user = credential.user;
+      if (user == null) {
+        _setError('Registration failed.');
+        return false;
+      }
+
+      await user.updateDisplayName(name.trim());
+
+      await _firestore.collection('users').doc(user.uid).set({
+        'uid': user.uid,
+        'name': name.trim(),
+        'email': email.trim(),
+        'role': role,
+        'authProvider': 'password',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      _userRole = role;
+      return true;
+    } on FirebaseAuthException catch (e) {
+      _setError(_mapAuthError(e));
+      return false;
+    } catch (_) {
+      _setError('Something went wrong.');
+      return false;
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _setLoading(false);
     }
   }
 
-  Future<void> signInWithGoogle() async {
-    _isLoading = true;
-    notifyListeners();
+  Future<bool> login({
+    required String email,
+    required String password,
+  }) async {
+    _setLoading(true);
+    _setError(null);
 
     try {
-      await Future.delayed(const Duration(seconds: 2));
-      // Add Google sign-in logic here
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password.trim(),
+      );
+
+      final user = credential.user;
+      if (user != null) {
+        final doc = await _firestore.collection('users').doc(user.uid).get();
+        _userRole = doc.data()?['role'] as String?;
+      }
+
+      return true;
+    } on FirebaseAuthException catch (e) {
+      _setError(_mapAuthError(e));
+      return false;
+    } catch (_) {
+      _setError('Something went wrong.');
+      return false;
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> signInWithGoogle({required String role}) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        _setError('Google sign-in cancelled.');
+        return false;
+      }
+
+      final googleAuth = await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential = await _auth.signInWithCredential(credential);
+      final user = userCredential.user;
+
+      if (user == null) {
+        _setError('Google sign-in failed.');
+        return false;
+      }
+
+      await _firestore.collection('users').doc(user.uid).set({
+        'uid': user.uid,
+        'name': user.displayName ?? '',
+        'email': user.email ?? '',
+        'role': role,
+        'authProvider': 'google',
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      _userRole = role;
+      return true;
+    } catch (_) {
+      _setError('Google sign-in failed.');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> setRoleForCurrentUser(String role) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        _setError('No signed-in user.');
+        return false;
+      }
+
+      await _firestore.collection('users').doc(user.uid).set({
+        'role': role,
+      }, SetOptions(merge: true));
+
+      _userRole = role;
+      return true;
+    } catch (_) {
+      _setError('Could not save role.');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> logout() async {
+    await _auth.signOut();
+    await _googleSignIn.signOut();
+    _userRole = null;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  Future<String?> fetchUserRole() async {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+
+    final doc = await _firestore.collection('users').doc(user.uid).get();
+    _userRole = doc.data()?['role'] as String?;
+    notifyListeners();
+    return _userRole;
+  }
+
+  String _mapAuthError(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'invalid-email':
+        return 'Please enter a valid email.';
+      case 'user-not-found':
+        return 'Account not found. Please register first.';
+      case 'wrong-password':
+        return 'Invalid email or password.';
+      case 'invalid-credential':
+      case 'INVALID_LOGIN_CREDENTIALS':
+        return 'Invalid email or password.';
+      case 'user-disabled':
+        return 'This account is disabled.';
+      case 'too-many-requests':
+        return 'Too many attempts. Try again later.';
+      default:
+        return 'Something went wrong.';
     }
   }
 }
