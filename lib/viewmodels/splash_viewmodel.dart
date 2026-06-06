@@ -1,20 +1,14 @@
 import 'package:flutter/material.dart';
-import '../routes/app_routes.dart';
-import '../views/screens/login_screen.dart';
 
 class SplashViewModel extends ChangeNotifier {
-  bool _isLoading = true;
-  bool get isLoading => _isLoading;
+  bool _isInitialized = false;
+  bool get isInitialized => _isInitialized;
 
-  Future<void> initialize(BuildContext context) async {
-    await Future.delayed(const Duration(milliseconds: 450));
-    _isLoading = false;
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+
+    await Future.delayed(const Duration(milliseconds: 300));
+    _isInitialized = true;
     notifyListeners();
-
-    if (!context.mounted) return;
-
-    Navigator.of(context).pushReplacement(
-      AppRoutes.smoothRoute(const LoginScreen()),
-    );
   }
 }
