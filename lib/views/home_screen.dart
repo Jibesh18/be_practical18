@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:ui';
@@ -8,82 +9,58 @@ import '../theme/app_text_styles.dart';
 import '../theme/spacing.dart';
 import '../viewmodel/auth_provider.dart';
 import '../viewmodel/internship_provider.dart';
+import '../viewmodel/skill_provider.dart';
 import '../viewmodel/notification_provider.dart';
-import '../components/cards/gradient_card.dart';
-import '../components/common/loading_widget.dart';
 import '../components/cards/primary_card.dart';
-import '../components/buttons/primary_button.dart';
+import '../components/common/loading_widget.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
-
-  void _gainXp(WidgetRef ref, BuildContext context, int xp, String action) {
-    ref.read(authProvider.notifier).addXp(xp);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(children: [
-          const Text('✨ ', style: TextStyle(fontSize: 20)),
-          Text('You earned $xp XP for $action!'),
-        ]),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final user = authState.user;
-    final internshipsAsync = ref.watch(allInternshipsProvider);
     final unreadCount = ref.watch(unreadCountProvider);
+    final internshipsAsync = ref.watch(allInternshipsProvider);
+    final skillsAsync = ref.watch(skillsProvider);
+    final applicationsAsync = ref.watch(userApplicationsProvider);
 
-    if (user == null) return const Scaffold(body: LoadingWidget(message: 'Initializing Be Practical Aura...'));
+    if (user == null) {
+      return const Scaffold(body: LoadingWidget(message: 'Initializing Be Practical...'));
+    }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFF),
+      backgroundColor: AppColors.background,
       body: Stack(
         children: [
-          // Aura Background Orbs
           Positioned(
-            top: -100,
-            left: -50,
-            child: _AuraGlow(color: AppColors.accent.withValues(alpha: 0.1), size: 400),
+            top: -150,
+            left: -100,
+            child: _AuraGlow(color: AppColors.accent.withValues(alpha: 0.12), size: 500),
           ),
           Positioned(
-            top: 250,
-            right: -100,
-            child: _AuraGlow(color: AppColors.secondary.withValues(alpha: 0.05), size: 500),
+            bottom: 100,
+            right: -150,
+            child: _AuraGlow(color: AppColors.tertiary.withValues(alpha: 0.08), size: 600),
           ),
 
           SafeArea(
             child: CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
-                // Premium 3D Branded Header
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
                     child: Row(
                       children: [
-                        const _Small3DLogo().animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
+                        const _Small3DLogo().animate().scale(duration: 800.ms, curve: Curves.easeOutBack),
                         const SizedBox(width: 16),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Be Practical',
-                              style: AppTextStyles.heading.copyWith(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 24,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            Text(
-                              'Welcome back, ${user.name.split(' ')[0]}',
-                              style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w800),
-                            ),
+                            Text('Be Practical', style: AppTextStyles.heading.copyWith(fontWeight: FontWeight.w900, fontSize: 24, letterSpacing: -1, color: Colors.black)),
+                            Text('Master your future, ${user.name.split(' ')[0]}', style: AppTextStyles.caption.copyWith(color: AppColors.secondary, fontWeight: FontWeight.w800)),
                           ],
                         ),
                         const Spacer(),
@@ -94,37 +71,22 @@ class HomeScreen extends ConsumerWidget {
                 ),
 
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      const SizedBox(height: 12),
-                      
-                      // Daily Challenge Section
-                      _buildDailyGoalCard(ref, context),
-                      
-                      const SizedBox(height: 32),
-                      _SectionHeader(
-                        title: 'Recommended For You',
-                        action: 'View All',
-                        onAction: () => context.push('/internships'),
-                      ),
+                      _buildXPStatus(user),
+                      const SizedBox(height: 24),
+                      _SectionHeader(title: 'Your Applications', action: 'View All', onAction: () => context.push('/internships')),
                       const SizedBox(height: 16),
-                      
-                      // Horizontal Internship List
-                      _buildInternshipHorizontalList(internshipsAsync, context),
-
+                      _buildApplicationsDashboard(applicationsAsync),
                       const SizedBox(height: 32),
-                      _SectionHeader(title: 'Continue Learning'),
+                      _SectionHeader(title: 'Recommended For You', action: 'Explore', onAction: () => context.push('/internships')),
                       const SizedBox(height: 16),
-                      
-                      // Neon Progress Card
-                      _buildContinueLearningCard(context),
-                      
+                      _buildInternshipList(internshipsAsync, context),
                       const SizedBox(height: 32),
-                      _SectionHeader(title: 'Live Challenges'),
+                      _SectionHeader(title: 'Active Skill Paths'),
                       const SizedBox(height: 16),
-                      _buildQuizCard(ref, context),
-                      
+                      _buildSkillsGrid(skillsAsync, context),
                       const SizedBox(height: 120),
                     ]),
                   ),
@@ -137,60 +99,59 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDailyGoalCard(WidgetRef ref, BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.15),
-            blurRadius: 30,
-            offset: const Offset(0, 15),
-          )
+  Widget _buildXPStatus(dynamic user) {
+    return PrimaryCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('XP PROGRESS', style: AppTextStyles.label.copyWith(color: AppColors.muted)),
+              Text('${user.xp} / ${user.nextLevelXp} XP', style: AppTextStyles.label.copyWith(color: Colors.black)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: LinearProgressIndicator(
+              value: user.xp / user.nextLevelXp,
+              minHeight: 10,
+              backgroundColor: AppColors.border.withValues(alpha: 0.3),
+              valueColor: const AlwaysStoppedAnimation(AppColors.accent),
+            ),
+          ),
         ],
-      ),
-      child: GradientCard(
-        gradient: AppColors.primaryGradient,
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: const Icon(Icons.bolt_rounded, color: AppColors.accent, size: 32),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Daily Quest', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
-                      Text('Complete 1 lesson to earn 500 XP', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            PrimaryButton(
-              label: 'CLAIM XP REWARD',
-              onPressed: () => _gainXp(ref, context, 500, "Daily Quest"),
-            ),
-          ],
-        ),
       ),
     ).animate().fadeIn().slideY(begin: 0.1);
   }
 
-  Widget _buildInternshipHorizontalList(dynamic internshipsAsync, BuildContext context) {
-    return internshipsAsync.when(
+  Widget _buildApplicationsDashboard(AsyncValue<List<Map<String, dynamic>>> asyncData) {
+    return asyncData.when(
+      data: (apps) {
+        int total = apps.length;
+        int pending = apps.where((a) => a['status'] == 'Under Review' || a['status'] == 'Applied').length;
+        int accepted = apps.where((a) => a['status'] == 'Accepted').length;
+
+        return Row(
+          children: [
+            Expanded(child: _StatCard(title: 'Total', count: total, color: AppColors.primary, icon: Icons.description_rounded)),
+            const SizedBox(width: 12),
+            Expanded(child: _StatCard(title: 'Pending', count: pending, color: Colors.orange, icon: Icons.pending_actions_rounded)),
+            const SizedBox(width: 12),
+            Expanded(child: _StatCard(title: 'Accepted', count: accepted, color: AppColors.success, icon: Icons.check_circle_rounded)),
+          ],
+        ).animate().fadeIn().slideX(begin: -0.1);
+      },
+      loading: () => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
+      error: (e, s) => Center(child: Text('Error: $e')),
+    );
+  }
+
+  Widget _buildInternshipList(AsyncValue<List<dynamic>> asyncData, BuildContext context) {
+    return asyncData.when(
       data: (data) => SizedBox(
-        height: 190,
+        height: 200,
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
           physics: const BouncingScrollPhysics(),
@@ -198,8 +159,8 @@ class HomeScreen extends ConsumerWidget {
           itemBuilder: (context, index) {
             final i = data[index];
             return Container(
-              width: 240,
-              margin: const EdgeInsets.only(right: 20),
+              width: 260,
+              margin: const EdgeInsets.only(right: 16),
               child: PrimaryCard(
                 onTap: () => context.push('/internship/${i.id}'),
                 padding: const EdgeInsets.all(20),
@@ -209,27 +170,28 @@ class HomeScreen extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
-                          child: Text(i.logo, style: const TextStyle(fontSize: 24)),
-                        ),
+                        Text(i.logo, style: const TextStyle(fontSize: 28)),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(color: AppColors.accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                          child: Text('${i.matchPercentage}% Match', style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.w900, fontSize: 11)),
+                          decoration: BoxDecoration(
+                            color: i.price == 'Free' ? AppColors.success.withValues(alpha: 0.1) : AppColors.secondary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(i.price, style: TextStyle(color: i.price == 'Free' ? AppColors.success : AppColors.secondary, fontWeight: FontWeight.w900, fontSize: 10)),
                         ),
                       ],
                     ),
                     const Spacer(),
-                    Text(i.position, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    Text(i.company, style: const TextStyle(color: Colors.black54, fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text(i.position, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w900, color: Colors.black), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(i.company, style: AppTextStyles.caption.copyWith(color: AppColors.muted)),
                     const SizedBox(height: 12),
-                    Row(children: [
-                      const Icon(Icons.location_on_rounded, size: 14, color: AppColors.accent),
-                      const SizedBox(width: 4),
-                      Text(i.location, style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w700)),
-                    ]),
+                    Row(
+                      children: [
+                        const Icon(Icons.flash_on_rounded, size: 14, color: AppColors.accent),
+                        const SizedBox(width: 4),
+                        Text('${i.matchPercentage}% Match', style: AppTextStyles.label.copyWith(fontSize: 11, color: AppColors.accent)),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -237,76 +199,44 @@ class HomeScreen extends ConsumerWidget {
           },
         ),
       ),
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Text('Error: $err'),
+      loading: () => const SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
+      error: (err, _) => const Text('Error loading matches'),
     );
   }
 
-  Widget _buildContinueLearningCard(BuildContext context) {
-    return PrimaryCard(
-      onTap: () => context.push('/skills'),
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        children: [
-          Container(
-            height: 56, width: 56,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: AppColors.accentGradient),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: AppColors.accent.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
-            ),
-            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 36),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildSkillsGrid(AsyncValue<List<dynamic>> asyncData, BuildContext context) {
+    return asyncData.when(
+      data: (data) => Column(
+        children: data.take(4).map<Widget>((skill) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: PrimaryCard(
+            onTap: () => context.push('/skills'),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Row(
               children: [
-                const Text('Flutter Mastery', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                const Text('Lesson 14: 3D Render', style: TextStyle(color: Colors.black54, fontSize: 13, fontWeight: FontWeight.w500)),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: const LinearProgressIndicator(value: 0.82, backgroundColor: Color(0xFFE2E8F0), valueColor: AlwaysStoppedAnimation(AppColors.secondary), minHeight: 6),
+                Container(
+                  height: 48, width: 48,
+                  decoration: BoxDecoration(color: AppColors.accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(Icons.code_rounded, color: AppColors.accent),
                 ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(skill.name, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold, color: Colors.black)),
+                      Text('${skill.lessons.length} Professional Lessons', style: AppTextStyles.caption),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.border),
               ],
             ),
           ),
-          const SizedBox(width: 16),
-          const Text('82%', style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.secondary, fontSize: 16)),
-        ],
+        )).toList(),
       ),
-    );
-  }
-
-  Widget _buildQuizCard(WidgetRef ref, BuildContext context) {
-    return PrimaryCard(
-      color: AppColors.secondary.withValues(alpha: 0.05),
-      padding: const EdgeInsets.all(24),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Real-World Quiz', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-                SizedBox(height: 4),
-                Text('Test your skills and earn +200 XP.', style: TextStyle(color: Colors.black54, fontSize: 14)),
-              ],
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => _gainXp(ref, context, 200, "Daily Quiz"),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                elevation: 8,
-                shadowColor: AppColors.primary.withValues(alpha: 0.4),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))
-            ),
-            child: const Text('Start', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-          ),
-        ],
-      ),
+      loading: () => const SizedBox(),
+      error: (err, _) => const SizedBox(),
     );
   }
 }
@@ -316,24 +246,15 @@ class _Small3DLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 48, height: 48,
+      width: 50, height: 50,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
-        gradient: const LinearGradient(
-          colors: [AppColors.accent, AppColors.secondary],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(color: AppColors.accent.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 5)),
-          const BoxShadow(color: Colors.black12, blurRadius: 5, offset: Offset(2, 2)),
-        ],
+        gradient: const LinearGradient(colors: [AppColors.accent, AppColors.secondary], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        boxShadow: [BoxShadow(color: AppColors.accent.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 5))],
       ),
       child: Padding(
         padding: const EdgeInsets.all(10.0),
-        child: Image.asset('assets/images/applogo.png', fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => const Center(child: Text('BP', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12))),
-        ),
+        child: Image.asset('assets/images/applogo.png', fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Center(child: Text('BP', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))),
       ),
     );
   }
@@ -352,12 +273,7 @@ class _NotificationBadge extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.border.withValues(alpha: 0.5), width: 1.5),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
-            ),
+            decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: AppColors.border, width: 1.5), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)]),
             child: const Icon(Icons.notifications_active_rounded, color: AppColors.primary, size: 24),
           ),
           if (count > 0)
@@ -379,16 +295,52 @@ class _SectionHeader extends StatelessWidget {
   final String title;
   final String? action;
   final VoidCallback? onAction;
+  
   const _SectionHeader({required this.title, this.action, this.onAction});
+
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-      Text(title, style: AppTextStyles.heading.copyWith(fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.5)),
-      if (action != null)
-        TextButton(onPressed: onAction, child: Text(action!, style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.w900))),
-    ],
-  );
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(title, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w900, color: Colors.black)),
+        if (action != null)
+          GestureDetector(
+            onTap: onAction,
+            child: Text(action!, style: AppTextStyles.label.copyWith(color: AppColors.accent)),
+          ),
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String title;
+  final int count;
+  final Color color;
+  final IconData icon;
+
+  const _StatCard({required this.title, required this.count, required this.color, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 8),
+          Text(count.toString(), style: AppTextStyles.heading.copyWith(color: color, fontSize: 24)),
+          Text(title, style: AppTextStyles.caption.copyWith(color: color.withValues(alpha: 0.8), fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
 }
 
 class _AuraGlow extends StatelessWidget {
