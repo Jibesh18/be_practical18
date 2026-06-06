@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../routes/app_routes.dart';
 import '../../themes/app_colors.dart';
 import '../../themes/app_textstyles.dart';
@@ -14,13 +15,13 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-  late AnimationController _logoController;
-  late AnimationController _textController;
+  late final AnimationController _logoController;
+  late final AnimationController _textController;
 
-  late Animation<double> _logoOpacity;
-  late Animation<double> _logoScale;
-  late Animation<double> _textOpacity;
-  late Animation<Offset> _textSlide;
+  late final Animation<double> _logoOpacity;
+  late final Animation<double> _logoScale;
+  late final Animation<double> _textOpacity;
+  late final Animation<Offset> _textSlide;
 
   @override
   void initState() {
@@ -28,65 +29,71 @@ class _SplashScreenState extends State<SplashScreen>
 
     _logoController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1100),
+      duration: const Duration(milliseconds: 700),
     );
 
     _textController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 500),
     );
 
     _logoOpacity = CurvedAnimation(
       parent: _logoController,
-      curve: Curves.easeInOutCubic,
+      curve: Curves.easeOut,
     );
 
-    _logoScale = Tween<double>(begin: 0.88, end: 1.0).animate(
+    _logoScale = Tween<double>(
+      begin: 0.92,
+      end: 1.0,
+    ).animate(
       CurvedAnimation(
         parent: _logoController,
-        curve: Curves.easeOutCubic,
+        curve: Curves.easeOutBack,
       ),
     );
 
     _textOpacity = CurvedAnimation(
       parent: _textController,
-      curve: Curves.easeInOutCubic,
+      curve: Curves.easeIn,
     );
 
     _textSlide = Tween<Offset>(
-      begin: const Offset(0, 0.06),
+      begin: const Offset(0, 0.08),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
         parent: _textController,
-        curve: Curves.easeOutCubic,
+        curve: Curves.easeOut,
       ),
     );
 
-    _startAnimation();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startAnimation();
+    });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    precacheImage(const AssetImage('assets/images/logobp.png'), context);
+    precacheImage(
+      const AssetImage('assets/images/logobp.png'),
+      context,
+    );
   }
 
   Future<void> _startAnimation() async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    if (!mounted) return;
+    await context.read<SplashViewModel>().initialize();
 
+    if (!mounted) return;
     _logoController.forward();
+    await Future.delayed(const Duration(milliseconds: 500));
 
-    await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
-
     _textController.forward();
+    await Future.delayed(const Duration(milliseconds: 900));
 
-    await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
-
-    context.read<SplashViewModel>().initialize(context);
+    Navigator.pushReplacementNamed(context, AppRoutes.authGate);
   }
 
   @override
@@ -99,9 +106,11 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppColors.darkBg : AppColors.lightBg;
-    final textColor = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
-    final subTextColor = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final bgColor = isDark ? Colors.grey.shade900 : Colors.grey.shade300;
+    final textColor =
+    isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
+    final subTextColor =
+    isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -109,50 +118,50 @@ class _SplashScreenState extends State<SplashScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            FadeTransition(
-              opacity: _logoOpacity,
-              child: ScaleTransition(
-                scale: _logoScale,
-                child: Image.asset(
-                  'assets/images/logobp.png',
-                  width: 290,
-                  height: 290,
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-            const SizedBox(height: 28),
-            SlideTransition(
-              position: _textSlide,
+            // RepaintBoundary isolates the animated logo into its own layer,
+            // preventing it from triggering a repaint of the entire screen
+            // every frame — this is the main fix for skipped frames.
+            RepaintBoundary(
               child: FadeTransition(
-                opacity: _textOpacity,
-                child: Column(
-                  children: [
-                    Text(
-                      'Be Practical',
-                      style: AppTextStyles.headlineLarge.copyWith(
-                        color: textColor,
-                        fontSize: 45,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Learn • Apply • Grow',
-                      style: AppTextStyles.labelMedium.copyWith(
-                        color: subTextColor,
-                        letterSpacing: 1.5,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
+                opacity: _logoOpacity,
+                child: ScaleTransition(
+                  scale: _logoScale,
+                  child: Image.asset(
+                    'assets/images/logobp.png',
+                    width: 220,
+                    height: 220,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 32),
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-              strokeWidth: 2.4,
+            const SizedBox(height: 20),
+            RepaintBoundary(
+              child: SlideTransition(
+                position: _textSlide,
+                child: FadeTransition(
+                  opacity: _textOpacity,
+                  child: Column(
+                    children: [
+                      Text(
+                        'Be Practical',
+                        style: AppTextStyles.headlineLarge.copyWith(
+                          color: textColor,
+                          fontSize: 40,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Learn • Apply • Grow',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: subTextColor,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),
