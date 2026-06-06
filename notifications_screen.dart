@@ -172,4 +172,25 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 isUnread: !notif.read,
               ),
             ),
- 
+          ),
+        ).animate().fadeIn(delay: (index * 30).ms);
+      },
+    ));
+  }
+
+  String _formatTime(String isoString) {
+    try {
+      final time = DateTime.parse(isoString);
+      final diff = DateTime.now().difference(time);
+      if (diff.inMinutes < 60) {
+        return '${diff.inMinutes} min ago';
+      } else if (diff.inHours < 24) {
+        return '${diff.inHours} hrs ago';
+      } else {
+        return '${diff.inDays} days ago';
+      }
+    } catch (e) {
+      return isoString;
+    }
+  }
+}
