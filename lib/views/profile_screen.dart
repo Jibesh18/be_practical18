@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'dart:ui';
+import 'dart:ui'; // CRITICAL: Fixes ImageFilter Error
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -43,6 +43,73 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
     _bioController.dispose();
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 75,
+      );
+
+      if (pickedFile != null) {
+        await ref.read(authProvider.notifier).updateAvatar(pickedFile.path);
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Identity Updated ✨'), 
+                behavior: SnackBarBehavior.floating,
+                backgroundColor: AppColors.secondary,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Error picking image: $e");
+    }
+  }
+
+  void _showAvatarPicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.95),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        padding: const EdgeInsets.all(AppSpacing.xl2),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 24),
+            Text('Identity Style', style: AppTextStyles.heading.copyWith(fontSize: 20, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _PickerOption(
+                  icon: Icons.camera_alt_rounded,
+                  label: 'Camera',
+                  onTap: () => _pickImage(ImageSource.camera),
+                ),
+                _PickerOption(
+                  icon: Icons.photo_library_rounded,
+                  label: 'Gallery',
+                  onTap: () => _pickImage(ImageSource.gallery),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showEditNameDialog(BuildContext context, String currentName) {
@@ -94,8 +161,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
         _isSavingBio = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Career Aura Updated ✨'),
+        const SnackBar(
+          content: Text('Career Aura Updated ✨'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppColors.success,
         ),
@@ -147,20 +214,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
                       children: [
                         const SizedBox(height: 10),
                         GestureDetector(
-                          onTap: () async {
-                            final imagePath = await context.push('/camera');
-                            if (imagePath != null && imagePath is String && context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Uploading picture...'), behavior: SnackBarBehavior.floating),
-                              );
-                              await ref.read(authProvider.notifier).updateAvatar(imagePath);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Profile picture updated! 📸'), behavior: SnackBarBehavior.floating),
-                                );
-                              }
-                            }
-                          },
+                          onTap: () => _showAvatarPicker(context),
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
@@ -186,10 +240,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
                                   child: CircleAvatar(
                                     radius: 54,
                                     backgroundColor: Colors.white.withValues(alpha: 0.15),
-                                    backgroundImage: user.avatar.startsWith('http') 
-                                        ? NetworkImage(user.avatar) as ImageProvider
-                                        : (user.avatar.contains('/') ? FileImage(File(user.avatar)) : null),
-                                    child: user.avatar.contains('/') || user.avatar.startsWith('http') ? null : Text(user.avatar, style: const TextStyle(fontSize: 48)),
+                                    backgroundImage: user.avatar.contains('/') ? FileImage(File(user.avatar)) : null,
+                                    child: user.avatar.contains('/') ? null : Text(user.avatar, style: const TextStyle(fontSize: 48)),
                                   ),
                                 ),
                               ),
@@ -265,7 +317,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
                   _buildSettingsGroup(context),
                   const SizedBox(height: 48),
                   SecondaryButton(
-                    label: 'Log Out',
+                    label: 'Sign Out session',
                     icon: Icons.power_settings_new_rounded,
                     onPressed: () => _showLogoutConfirmation(context),
                   ),
@@ -298,7 +350,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
               children: [
                 _HeaderStat(label: 'LEVEL', value: '${user.level}'),
                 _StatDivider(),
-                _HeaderStat(label: 'RANK', value: '#42'),
+                _HeaderStat(label: 'STREAK', value: '${user.stats.learningStreak}d'),
                 _StatDivider(),
                 _HeaderStat(label: 'MATCH', value: '98%'),
               ],
