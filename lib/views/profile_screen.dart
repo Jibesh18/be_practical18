@@ -45,73 +45,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
     super.dispose();
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final XFile? pickedFile = await _picker.pickImage(
-        source: source,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 75,
-      );
-
-      if (pickedFile != null) {
-        ref.read(authProvider.notifier).updateAvatar(pickedFile.path);
-        if (mounted) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Identity Updated ✨'), 
-                behavior: SnackBarBehavior.floating,
-                backgroundColor: AppColors.secondary,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint("Error picking image: $e");
-    }
-  }
-
-  void _showAvatarPicker(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.95),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        padding: const EdgeInsets.all(AppSpacing.xl2),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 24),
-            Text('Identity Style', style: AppTextStyles.heading.copyWith(fontSize: 20, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _PickerOption(
-                  icon: Icons.camera_alt_rounded,
-                  label: 'Camera',
-                  onTap: () => _pickImage(ImageSource.camera),
-                ),
-                _PickerOption(
-                  icon: Icons.photo_library_rounded,
-                  label: 'Gallery',
-                  onTap: () => _pickImage(ImageSource.gallery),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showEditNameDialog(BuildContext context, String currentName) {
     final controller = TextEditingController(text: currentName);
     showDialog(
@@ -214,7 +147,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
                       children: [
                         const SizedBox(height: 10),
                         GestureDetector(
-                          onTap: () => _showAvatarPicker(context),
+                          onTap: () async {
+                            final imagePath = await context.push('/camera');
+                            if (imagePath != null && imagePath is String && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Uploading picture...'), behavior: SnackBarBehavior.floating),
+                              );
+                              await ref.read(authProvider.notifier).updateAvatar(imagePath);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Profile picture updated! 📸'), behavior: SnackBarBehavior.floating),
+                                );
+                              }
+                            }
+                          },
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
@@ -240,8 +186,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
                                   child: CircleAvatar(
                                     radius: 54,
                                     backgroundColor: Colors.white.withValues(alpha: 0.15),
-                                    backgroundImage: user.avatar.contains('/') ? FileImage(File(user.avatar)) : null,
-                                    child: user.avatar.contains('/') ? null : Text(user.avatar, style: const TextStyle(fontSize: 48)),
+                                    backgroundImage: user.avatar.startsWith('http') 
+                                        ? NetworkImage(user.avatar) as ImageProvider
+                                        : (user.avatar.contains('/') ? FileImage(File(user.avatar)) : null),
+                                    child: user.avatar.contains('/') || user.avatar.startsWith('http') ? null : Text(user.avatar, style: const TextStyle(fontSize: 48)),
                                   ),
                                 ),
                               ),
@@ -317,7 +265,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
                   _buildSettingsGroup(context),
                   const SizedBox(height: 48),
                   SecondaryButton(
-                    label: 'Sign Out',
+                    label: 'Log Out',
                     icon: Icons.power_settings_new_rounded,
                     onPressed: () => _showLogoutConfirmation(context),
                   ),
@@ -589,34 +537,4 @@ class _PickerOption extends StatelessWidget {
       ),
     );
   }
-}
-
-class _XPProgressBar extends StatelessWidget {
-  final int current, next, level;
-  const _XPProgressBar({required this.current, required this.next, required this.level});
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 48),
-    child: Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('LEVEL $level', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1)),
-            Text('$current / $next XP', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        const SizedBox(height: 10),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: LinearProgressIndicator(
-            value: (next > 0) ? (current / next) : 0.0,
-            minHeight: 10,
-            backgroundColor: Colors.white.withValues(alpha: 0.1),
-            valueColor: const AlwaysStoppedAnimation(AppColors.accent),
-          ),
-        ),
-      ],
-    ),
-  );
 }
