@@ -53,3 +53,11 @@ final activeNotificationsProvider = Provider<List<Notification>>((ref) {
   );
 });
 
+// 6. Live Unread Count for the Badge
+final unreadCountProvider = Provider<int>((ref) {
+  final notificationsAsync = ref.watch(notificationsStreamProvider);
+  return notificationsAsync.maybeWhen(
+    data: (list) => list.where((n) => !n.read && !n.isArchived).length,
+    orElse: () => 0,
+  );
+});
