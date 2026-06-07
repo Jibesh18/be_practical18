@@ -12,7 +12,20 @@
           "package_name": "com.bepractical.be_practical18"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "829478655857-vvgdj728gh1fqg2ddkqjn6dla5on4jh6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bepractical.be_practical18",
+            "certificate_hash": "1c2f49c1096cf9f747718b2a886ba36278b9086f"
+          }
+        },
+        {
+          "client_id": "829478655857-vncaqflfud72h8nni17b1e9bafe27tvi.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyB9mKi9dAFlUryRsIvehJvqTenLRx8XtVg"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "829478655857-vncaqflfud72h8nni17b1e9bafe27tvi.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "829478655857-g9nqppath2d91ioaeaci9d3ac0vchtcr.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.bepractical.bePractical18"
+              }
+            }
+          ]
         }
       }
     }
