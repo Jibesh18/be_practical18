@@ -12,8 +12,20 @@ class LoadingWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-      const CircularProgressIndicator(
-      valueColor: AlwaysStoppedAnimation(AppColors.primary),
-    ),
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation(AppColors.primary),
+          ),
+          if (message != null) ...[
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              message!,
+              style: AppTextStyles.body.copyWith(color: AppColors.muted),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
