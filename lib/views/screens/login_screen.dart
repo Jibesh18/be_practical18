@@ -39,11 +39,20 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (success) {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        AppRoutes.authGate,
-            (route) => false,
-      );
+      final role = await authVM.fetchUserRole();
+      if (!mounted) return;
+
+      if (role == 'employer') {
+        Navigator.pushNamedAndRemoveUntil(
+            context, AppRoutes.employerHome, (route) => false);
+      } else if (role == 'internSeeker') {
+        Navigator.pushNamedAndRemoveUntil(
+            context, AppRoutes.internHome, (route) => false);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Account not found. Please register first.')),
+        );
+      }
     } else if (authVM.errorMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -53,64 +62,34 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     }
   }
-
   Future<void> _loginWithGoogle() async {
-    final selectedRole = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Choose your role',
-                  style: AppTextStyles.titleLarge,
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context, 'employer'),
-                    child: const Text('Employer'),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context, 'internSeeker'),
-                    child: const Text('Intern Seeker'),
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-
-    if (selectedRole == null) return;
-
     final authVM = context.read<AuthViewModel>();
-    final success = await authVM.signInWithGoogle(role: selectedRole);
+
+    // For login, we use existing role from Firestore — pass empty string,
+    // signInWithGoogle uses merge:true so it won't overwrite existing role
+    final success = await authVM.signInWithGoogle(role: '');
 
     if (!mounted) return;
 
     if (success) {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        AppRoutes.authGate,
-            (route) => false,
-      );
+      // Read the role that was saved during registration
+      final role = await authVM.fetchUserRole();
+
+      if (!mounted) return;
+
+      if (role == 'employer') {
+        Navigator.pushNamedAndRemoveUntil(
+          context, AppRoutes.employerHome, (route) => false,
+        );
+      } else if (role == 'internSeeker') {
+        Navigator.pushNamedAndRemoveUntil(
+          context, AppRoutes.internHome, (route) => false,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Account not found. Please register first.')),
+        );
+      }
     } else if (authVM.errorMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -221,7 +200,37 @@ class _LoginScreenState extends State<LoginScreen> {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: () {},
+                          onPressed: () async {
+                            if (_emailController.text.trim().isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Enter your email first'),
+                                ),
+                              );
+                              return;
+                            }
+
+                            final authVm =
+                            context.read<AuthViewModel>();
+
+                            final success =
+                            await authVm.resetPassword(
+                              _emailController.text.trim(),
+                            );
+
+                            if (!mounted) return;
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  success
+                                      ? 'Password reset email sent'
+                                      : authVm.errorMessage ??
+                                      'Something went wrong',
+                                ),
+                              ),
+                            );
+                          },
                           child: const Text('Forgot password?'),
                         ),
                       ),
@@ -291,7 +300,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 width: 22,
                               ),
                               label: Text(
-                                'Continue with Google',
+                                'Login with Google',  // or "Sign in with Google"
                                 style: AppTextStyles.button.copyWith(color: Colors.black),
                               ),
                             ),
