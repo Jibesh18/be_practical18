@@ -10,12 +10,18 @@ class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
   Future<String?> _getUserRole(String uid) async {
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .get();
+    for (int i = 0; i < 3; i++) {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
 
-    return doc.data()?['role'] as String?;
+      final role = doc.data()?['role'] as String?;
+      if (role != null) return role;
+
+      await Future.delayed(const Duration(seconds: 1));
+    }
+    return null;
   }
 
   @override
