@@ -39,22 +39,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final authVM = context.read<AuthViewModel>();
+    final role = _selectedType == RegisterType.employer ? 'employer' : 'internSeeker';
+
     final success = await authVM.register(
       name: _nameController.text.trim(),
       email: _emailController.text.trim(),
       password: _passwordController.text.trim(),
-      role: _selectedType == RegisterType.employer
-          ? 'employer'
-          : 'internSeeker',
+      role: role,
     );
 
     if (!mounted) return;
 
     if (success) {
-
+      // ✅ Go directly to the right screen, skip AuthGate race condition
       Navigator.pushNamedAndRemoveUntil(
         context,
-        AppRoutes.authGate,
+        role == 'employer' ? AppRoutes.employerHome : AppRoutes.internHome,
+            (route) => false,
+      );
+    } else if (authVM.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authVM.errorMessage!),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+  Future<void> _registerWithGoogle() async {
+    final authVM = context.read<AuthViewModel>();
+    final role = _selectedType == RegisterType.employer ? 'employer' : 'internSeeker';
+
+    final success = await authVM.signInWithGoogle(role: role);
+
+    if (!mounted) return;
+
+    if (success) {
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        role == 'employer' ? AppRoutes.employerHome : AppRoutes.internHome,
             (route) => false,
       );
     } else if (authVM.errorMessage != null) {
@@ -290,6 +313,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                               )
                                   : const Text('Register'),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      Consumer<AuthViewModel>(
+                        builder: (context, authVM, _) {
+                          return SizedBox(
+                            width: double.infinity,
+                            height: 58,
+                            child: OutlinedButton.icon(
+                              onPressed: authVM.isLoading ? null : _registerWithGoogle,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.black,
+                                side: const BorderSide(color: AppColors.darkBorder, width: 1.5),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: Image.asset('assets/images/google.png', height: 22, width: 22),
+                              label: Text(
+                                'Register with Google',
+                                style: AppTextStyles.button.copyWith(color: Colors.black),
+                              ),
                             ),
                           );
                         },
