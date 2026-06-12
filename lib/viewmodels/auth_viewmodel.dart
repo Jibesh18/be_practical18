@@ -64,12 +64,14 @@ class AuthViewModel extends ChangeNotifier {
     } on FirebaseAuthException catch (e) {
       _setError(_mapAuthError(e));
       return false;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Register error: $e');   // ← also fix the silent catch
       _setError('Something went wrong.');
       return false;
     } finally {
       _setLoading(false);
     }
+
   }
 
   Future<bool> login({
@@ -102,7 +104,26 @@ class AuthViewModel extends ChangeNotifier {
       _setLoading(false);
     }
   }
+  Future<bool> resetPassword(String email) async {
+    _setLoading(true);
+    _setError(null);
 
+    try {
+      await _auth.sendPasswordResetEmail(
+        email: email.trim(),
+      );
+
+      return true;
+    } on FirebaseAuthException catch (e) {
+      _setError(_mapAuthError(e));
+      return false;
+    } catch (_) {
+      _setError('Unable to send reset email.');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
   Future<bool> signInWithGoogle({required String role}) async {
     _setLoading(true);
     _setError(null);
@@ -115,7 +136,6 @@ class AuthViewModel extends ChangeNotifier {
       }
 
       final googleAuth = await googleUser.authentication;
-
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -123,24 +143,39 @@ class AuthViewModel extends ChangeNotifier {
 
       final userCredential = await _auth.signInWithCredential(credential);
       final user = userCredential.user;
-
       if (user == null) {
         _setError('Google sign-in failed.');
         return false;
       }
 
-      await _firestore.collection('users').doc(user.uid).set({
-        'uid': user.uid,
-        'name': user.displayName ?? '',
-        'email': user.email ?? '',
-        'role': role,
-        'authProvider': 'google',
-        'createdAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      final docRef = _firestore.collection('users').doc(user.uid);
+      final doc = await docRef.get();
 
-      _userRole = role;
+      if (!doc.exists) {
+        // New user — registration flow, save with role
+        if (role.isEmpty) {
+          _setError('Account not found. Please register first.');
+          await _auth.signOut();
+          await _googleSignIn.signOut();
+          return false;
+        }
+        await docRef.set({
+          'uid': user.uid,
+          'name': user.displayName ?? '',
+          'email': user.email ?? '',
+          'role': role,
+          'authProvider': 'google',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        _userRole = role;
+      } else {
+        // Existing user — login flow, just read role
+        _userRole = doc.data()?['role'] as String?;
+      }
+
       return true;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Google sign-in error: $e');
       _setError('Google sign-in failed.');
       return false;
     } finally {
@@ -190,24 +225,38 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
     return _userRole;
   }
-
   String _mapAuthError(FirebaseAuthException e) {
     switch (e.code) {
       case 'invalid-email':
         return 'Please enter a valid email.';
+
+      case 'email-already-in-use':
+        return 'An account with this email already exists.';
+
+      case 'weak-password':
+        return 'Password must be at least 6 characters.';
+
       case 'user-not-found':
         return 'Account not found. Please register first.';
+
       case 'wrong-password':
         return 'Invalid email or password.';
+
       case 'invalid-credential':
       case 'INVALID_LOGIN_CREDENTIALS':
         return 'Invalid email or password.';
+
       case 'user-disabled':
         return 'This account is disabled.';
+
       case 'too-many-requests':
         return 'Too many attempts. Try again later.';
+
+      case 'network-request-failed':
+        return 'Please check your internet connection.';
+
       default:
-        return 'Something went wrong.';
+        return e.message ?? 'Something went wrong.';
     }
   }
 }
