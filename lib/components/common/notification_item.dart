@@ -60,3 +60,20 @@ class NotificationItem extends StatelessWidget {
               size: 24,
             ),
           ),
+          const SizedBox(width: AppSpacing.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+            Row(
+            children: [
+            Expanded(
+            child: Text(
+              title,
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: AppColors.primary,
+                fontWeight: isUnread ? FontWeight.w900 : FontWeight.w700,
+                fontSize: 16,
+              ),
+            ),
+          ),
