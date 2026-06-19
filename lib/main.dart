@@ -1,3 +1,7 @@
+import 'package:be_practical18/viewmodels/applications_viewmodel.dart';
+import 'package:be_practical18/viewmodels/community_viewmodel.dart';
+import 'package:be_practical18/viewmodels/dashboard_viewmodel.dart';
+import 'package:be_practical18/viewmodels/internships_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'routes/app_routes.dart';
@@ -15,6 +19,10 @@ class BePracticalApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => SplashViewModel()),
+        ChangeNotifierProvider(create: (_) => DashboardViewModel()),
+        ChangeNotifierProvider(create: (_) => InternshipsViewModel()),
+        ChangeNotifierProvider(create: (_) => ApplicationsViewModel()),
+        ChangeNotifierProvider(create: (_) => CommunityViewModel()),
       ],
       child: MaterialApp(
         title: 'Be Practical',
