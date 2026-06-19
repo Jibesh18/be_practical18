@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
 
 class SplashViewModel extends ChangeNotifier {
-  bool _isLoading = true;
+  bool _isInitialized = false;
+  bool get isInitialized => _isInitialized;
 
-  bool get isLoading => _isLoading;
+  Future<void> initialize() async {
+    if (_isInitialized) return;
 
-  Future<void> initialize(BuildContext context) async {
-    await Future.delayed(const Duration(milliseconds: 700));
-    _isLoading = false;
+    await Future.delayed(const Duration(milliseconds: 300));
+    _isInitialized = true;
     notifyListeners();
-
-    if (context.mounted) {
-      Navigator.of(context).pushReplacementNamed('/home');
-    }
   }
 }

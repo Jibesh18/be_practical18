@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../../routes/app_routes.dart';
+import '../../themes/app_colors.dart';
+import '../../themes/app_textstyles.dart';
 import '../../viewmodels/splash_viewmodel.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -11,60 +15,85 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-  late AnimationController _logoController;
-  late AnimationController _textController;
+  late final AnimationController _logoController;
+  late final AnimationController _textController;
 
-  late Animation<double> _logoReveal;
-  late Animation<double> _logoScale;
-  late Animation<double> _textOpacity;
-  late Animation<double> _taglineOpacity;
+  late final Animation<double> _logoOpacity;
+  late final Animation<double> _logoScale;
+  late final Animation<double> _textOpacity;
+  late final Animation<Offset> _textSlide;
 
   @override
   void initState() {
     super.initState();
 
-
     _logoController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 700),
     );
-
-    _logoReveal = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _logoController, curve: Curves.easeOut),
-    );
-
-    _logoScale = Tween<double>(begin: 0.85, end: 1).animate(
-      CurvedAnimation(parent: _logoController, curve: Curves.easeOutBack),
-    );
-
 
     _textController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 500),
     );
 
-    _textOpacity = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _textController, curve: Curves.easeIn),
+    _logoOpacity = CurvedAnimation(
+      parent: _logoController,
+      curve: Curves.easeOut,
     );
 
-    _taglineOpacity = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _textController, curve: Curves.easeIn),
+    _logoScale = Tween<double>(
+      begin: 0.92,
+      end: 1.0,
+    ).animate(
+      CurvedAnimation(
+        parent: _logoController,
+        curve: Curves.easeOutBack,
+      ),
     );
 
-    _startAnimation();
+    _textOpacity = CurvedAnimation(
+      parent: _textController,
+      curve: Curves.easeIn,
+    );
+
+    _textSlide = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _textController,
+        curve: Curves.easeOut,
+      ),
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startAnimation();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    precacheImage(
+      const AssetImage('assets/images/logobp.png'),
+      context,
+    );
   }
 
   Future<void> _startAnimation() async {
-    await _logoController.forward();
+    await context.read<SplashViewModel>().initialize();
 
-    await Future.delayed(const Duration(milliseconds: 150));
-    await _textController.forward();
+    if (!mounted) return;
+    _logoController.forward();
+    await Future.delayed(const Duration(milliseconds: 500));
 
-    await Future.delayed(const Duration(milliseconds: 450));
+    if (!mounted) return;
+    _textController.forward();
+    await Future.delayed(const Duration(milliseconds: 900));
 
-    if (mounted) {
-      context.read<SplashViewModel>().initialize(context);
-    }
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(context, AppRoutes.authGate);
   }
 
   @override
@@ -76,114 +105,65 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-
-    final mediaQuery = MediaQuery.of(context);
-    final screenWidth = mediaQuery.size.width;
-
-
-    final textScaler = mediaQuery.textScaler;
-
-
-    final logoSize = screenWidth * 0.90;
-    final progressWidth = screenWidth * 0.70;
-
-
-    final titleFontSize = textScaler.scale((screenWidth * 0.15).clamp(38.0, 50.0));
-    final taglineFontSize = textScaler.scale((screenWidth * 0.045).clamp(15.0, 19.0));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? Colors.grey.shade900 : Colors.grey.shade300;
+    final textColor =
+    isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
+    final subTextColor =
+    isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: bgColor,
       body: Center(
-        child: SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(), // Keeps layout locked & stable
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-
-              AnimatedBuilder(
-                animation: _logoController,
-                builder: (context, child) {
-                  return Transform.scale(
-                    scale: _logoScale.value,
-                    child: ClipRect(
-                      child: Align(
-                        alignment: Alignment.bottomCenter,
-                        heightFactor: _logoReveal.value,
-                        child: child,
-                      ),
-                    ),
-                  );
-                },
-                child: Image(
-                  image: const AssetImage('assets/images/logobp.png'),
-                  width: logoSize,
-                  height: logoSize,
-                  fit: BoxFit.contain,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // RepaintBoundary isolates the animated logo into its own layer,
+            // preventing it from triggering a repaint of the entire screen
+            // every frame — this is the main fix for skipped frames.
+            RepaintBoundary(
+              child: FadeTransition(
+                opacity: _logoOpacity,
+                child: ScaleTransition(
+                  scale: _logoScale,
+                  child: Image.asset(
+                    'assets/images/logobp.png',
+                    width: 220,
+                    height: 220,
+                  ),
                 ),
               ),
-
-              SizedBox(height: screenWidth * 0.07), // Scalable gap
-
-              /// APP NAME
-              FadeTransition(
-                opacity: _textOpacity,
-                child: Text.rich(
-                  textAlign: TextAlign.center,
-                  TextSpan(
+            ),
+            const SizedBox(height: 20),
+            RepaintBoundary(
+              child: SlideTransition(
+                position: _textSlide,
+                child: FadeTransition(
+                  opacity: _textOpacity,
+                  child: Column(
                     children: [
-                      TextSpan(
-                        text: "Be ",
-                        style: TextStyle(
-                          fontSize: titleFontSize,
+                      Text(
+                        'Be Practical',
+                        style: AppTextStyles.headlineLarge.copyWith(
+                          color: textColor,
+                          fontSize: 40,
                           fontWeight: FontWeight.w800,
-                          color: const Color(0xFF111827),
                         ),
                       ),
-                      TextSpan(
-                        text: "Practical",
-                        style: TextStyle(
-                          fontSize: titleFontSize,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF0A66C2),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Learn • Apply • Grow',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: subTextColor,
+                          letterSpacing: 1.2,
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-
-              SizedBox(height: screenWidth * 0.03),
-
-              /// TAGLINE
-              FadeTransition(
-                opacity: _taglineOpacity,
-                child: Text(
-                  "LEARN • APPLY • GROW",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: taglineFontSize,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 4,
-                    color: const Color(0xFF374151),
-                    height: 1.5, // Essential line-height to prevent letter clipping
-                  ),
-                ),
-              ),
-
-              SizedBox(height: screenWidth * 0.12),
-
-              /// PROGRESS BAR
-              SizedBox(
-                width: progressWidth,
-                child: const LinearProgressIndicator(
-                  backgroundColor: Color(0xFFE5E7EB),
-                  color: Color(0xFF0A66C2),
-                  minHeight: 4,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
