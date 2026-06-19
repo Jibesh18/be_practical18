@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/application.dart';
+
+import '../models/application_model.dart';
 
 class ApplicationsViewModel extends ChangeNotifier {
   final List<Application> _applications = [
