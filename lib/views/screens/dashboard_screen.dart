@@ -58,7 +58,7 @@ class DashboardContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildHeader(),
+        _buildHeader(context),
         Expanded(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
@@ -72,7 +72,7 @@ class DashboardContent extends StatelessWidget {
                 const SizedBox(height: 12),
                 _buildRecommendedList(),
                 const SizedBox(height: 24),
-                _buildSectionTitle('Latest Internships'),
+                _buildSectionTitle("What's trending!" ),
                 const SizedBox(height: 12),
                 _buildLatestInternships(),
                 const SizedBox(height: 150),
@@ -84,7 +84,7 @@ class DashboardContent extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 40, 16, 20),
@@ -115,10 +115,18 @@ class DashboardContent extends StatelessWidget {
                 children: [
                   const Text('Hi Bipin! ', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
                   const Icon(Iconsax.star, color: Colors.amber, size: 22),
-                  const SizedBox(width: 10),
-                  const CircleAvatar(
-                    radius: 20,
-                    backgroundImage: AssetImage('assets/images/profile.png'),
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                      );
+                    },
+                    child: const CircleAvatar(
+                      radius: 20,
+                      backgroundImage: AssetImage('assets/images/profilepic.png'),
+                    ),
                   ),
                 ],
               ),
