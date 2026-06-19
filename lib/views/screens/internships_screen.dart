@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:provider/provider.dart';
 
-import '../../models/internship.dart';
+import '../../models/internship_model.dart';
 import '../../viewmodels/internships_viewmodel.dart';
 
 
