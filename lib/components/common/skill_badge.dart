@@ -20,24 +20,33 @@ class SkillBadge extends StatelessWidget {
     return GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
-          ),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(AppBorderRadius.lg),
-            border: Border.all(
-              color: AppColors.primary.withOpacity(0.2),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-            Text(
-            skill,
-            style: AppTextStyles.label.copyWith(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w600,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(AppBorderRadius.lg),
+              border: Border.all(
+                color: AppColors.primary.withOpacity(0.2),
+              ),
             ),
-          ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+              Text(
+              skill,
+              style: AppTextStyles.label.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(AppBorderRadius.sm),
+              ),
