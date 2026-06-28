@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../../models/application_model.dart';
 import '../../viewmodels/applications_viewmodel.dart';
 
-
 class ApplicationsScreen extends StatelessWidget {
   const ApplicationsScreen({super.key});
 
@@ -18,6 +17,9 @@ class ApplicationsScreen extends StatelessWidget {
       ),
       body: Consumer<ApplicationsViewModel>(
         builder: (context, viewModel, child) {
+          if (viewModel.applications.isEmpty) {
+            return const Center(child: Text('No applications yet.'));
+          }
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: viewModel.applications.length,
