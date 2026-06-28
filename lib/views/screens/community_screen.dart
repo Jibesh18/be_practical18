@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/material.dart';
-import 'package:be_practical18/models/community_post.dart';
-import 'package:be_practical18/viewmodels/community_viewmodel.dart';
 
+import '../../models/community_post.dart';
+import '../../viewmodels/community_viewmodel.dart';
+import 'community_post_detail_screen.dart';
 
 class CommunityScreen extends StatelessWidget {
   const CommunityScreen({super.key});
@@ -44,7 +44,9 @@ class CommunityScreen extends StatelessWidget {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () {
+          // TODO: Add new post
+        },
         child: const Icon(Iconsax.add),
       ),
     );
@@ -63,7 +65,26 @@ class CommunityPostCard extends StatelessWidget {
         leading: const CircleAvatar(child: Icon(Iconsax.people)),
         title: Text(post.question, maxLines: 2, overflow: TextOverflow.ellipsis),
         subtitle: Text(post.author),
-        trailing: Text(post.answers, style: const TextStyle(color: Colors.blue)),
+        trailing: GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CommunityPostDetailScreen(
+                  question: post.question,
+                  author: post.author,
+                ),
+              ),
+            );
+          },
+          child: Text(
+            post.answers,
+            style: const TextStyle(
+              color: Colors.blue,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ),
     );
   }
