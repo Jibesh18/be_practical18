@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/material.dart';
-
 
 import '../../viewmodels/dashboard_viewmodel.dart';
-import 'profile_screen.dart';
 import 'internships_screen.dart';
 import 'applications_screen.dart';
 import 'community_screen.dart';
+import 'profile_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
-  final List<Widget> _pages = const [
+  static const List<Widget> _pages = [
     DashboardContent(),
     InternshipsScreen(),
     ApplicationsScreen(),
