@@ -23,6 +23,7 @@ class BePracticalApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => InternshipsViewModel()),
         ChangeNotifierProvider(create: (_) => ApplicationsViewModel()),
         ChangeNotifierProvider(create: (_) => CommunityViewModel()),
+        ChangeNotifierProvider(create: (_) => ApplicationsViewModel()),
       ],
       child: MaterialApp(
         title: 'Be Practical',
