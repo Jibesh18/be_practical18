@@ -1,68 +1,79 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends State<ProfileScreen> {
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        title: const Text('My Profile', style: TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        actions: [
-          IconButton(icon: const Icon(Iconsax.edit_2), onPressed: () {}),
-        ],
-      ),
       body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
-            _buildProfileHeader(),
+            // Profile Header
+            Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 50),
+                  const CircleAvatar(
+                    radius: 50,
+                    backgroundImage: AssetImage('assets/images/profile.png'),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Bipin Ranabhat',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  const Text(
+                    'Flutter Developer Intern',
+                    style: TextStyle(fontSize: 16, color: Colors.white70),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildProfileCompletion(),
-                  const SizedBox(height: 20),
-                  _buildInfoStats(),
                   const SizedBox(height: 24),
 
                   _buildSectionTitle('About Me'),
-                  const SizedBox(height: 8),
-                  _buildAboutSection(),
-
+                  const Text(
+                    'Passionate Computer Science student looking for opportunities in mobile development. '
+                        'Love building beautiful and functional apps with Flutter.',
+                    style: TextStyle(fontSize: 15, height: 1.5),
+                  ),
                   const SizedBox(height: 24),
-                  _buildSectionTitle('Skills'),
-                  const SizedBox(height: 12),
-                  _buildSkills(),
 
-                  const SizedBox(height: 24),
-                  _buildSectionTitle('Projects'),
-                  const SizedBox(height: 12),
-                  _buildProjects(),
-
-                  const SizedBox(height: 24),
                   _buildSectionTitle('Education'),
-                  const SizedBox(height: 12),
-                  _buildEducation(),
-
+                  _buildEducationCard(),
                   const SizedBox(height: 24),
-                  _buildSectionTitle('Resume & Documents'),
-                  const SizedBox(height: 12),
-                  _buildResumeCard(),
 
-                  const SizedBox(height: 40),
+                  _buildSectionTitle('Skills'),
+                  _buildSkills(),
+                  const SizedBox(height: 24),
+
+                  _buildSectionTitle('Projects'),
+                  _buildProjects(),
+                  const SizedBox(height: 24),
+
+                  _buildSectionTitle('Social Links'),
+                  _buildSocialLinks(),
+                  const SizedBox(height: 24),
+
+                  _buildResumeCard(),
                 ],
               ),
             ),
@@ -72,194 +83,120 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 30, 20, 30),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-      ),
-      child: Column(
-        children: [
-          Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              const CircleAvatar(
-                radius: 55,
-                backgroundImage: AssetImage('assets/images/profilepic.png'),
-              ),
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.white,
-                child: IconButton(
-                  icon: const Icon(Icons.camera_alt, size: 18, color: Colors.blue),
-                  onPressed: () {},
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Text('Bipin Ranabhat', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-          const Text('Aspiring Data Analyst', style: TextStyle(fontSize: 16, color: Colors.white70)),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              Icon(Icons.location_on, color: Colors.white70, size: 20),
-              SizedBox(width: 6),
-              Text('Kathmandu, Nepal', style: TextStyle(color: Colors.white70)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildProfileCompletion() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text('Profile Completion', style: TextStyle(fontWeight: FontWeight.bold)),
-                Text('78%', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(
-              value: 0.78,
-              backgroundColor: Colors.grey[200],
-              color: Colors.blue,
-              minHeight: 8,
-              borderRadius: BorderRadius.circular(8),
-            ),
+            const Text('Profile Completion', style: TextStyle(fontWeight: FontWeight.w600)),
+            const Text('78%', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildInfoStats() {
-    return Row(
-      children: [
-        Expanded(child: _statCard(Iconsax.briefcase, '12', 'Applied')),
-        const SizedBox(width: 12),
-        Expanded(child: _statCard(Iconsax.bookmark, '24', 'Saved')),
-        const SizedBox(width: 12),
-        Expanded(child: _statCard(Iconsax.award, '5', 'Certified')),
+        const SizedBox(height: 8),
+        LinearProgressIndicator(
+          value: 0.78,
+          backgroundColor: Colors.grey[300],
+          color: Colors.blue,
+          minHeight: 8,
+        ),
       ],
     );
   }
 
-  Widget _statCard(IconData icon, String count, String label) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Column(
-          children: [
-            Icon(icon, color: Colors.blue, size: 28),
-            const SizedBox(height: 8),
-            Text(count, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            Text(label, style: const TextStyle(color: Colors.grey)),
-          ],
-        ),
-      ),
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold));
-  }
-
-  Widget _buildAboutSection() {
-    return const Card(
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Text(
-          'Passionate about data-driven decision making. Currently seeking internship opportunities in Data Analysis, Business Intelligence, and Machine Learning.',
-          style: TextStyle(fontSize: 15, height: 1.6),
-        ),
+  Widget _buildEducationCard() {
+    return Card(
+      child: ListTile(
+        leading: const Icon(Iconsax.book, color: Colors.blue),
+        title: const Text('B.Sc. Computer Science'),
+        subtitle: const Text('Tribhuvan University • 2022 - 2026'),
       ),
     );
   }
 
   Widget _buildSkills() {
-    final skills = ['Python', 'SQL', 'Power BI', 'Tableau', 'Excel', 'Machine Learning'];
+    final skills = ['Flutter', 'Dart', 'Firebase', 'UI/UX', 'Git', 'REST API'];
     return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: skills
-          .map((skill) => Chip(
+      spacing: 8,
+      runSpacing: 8,
+      children: skills.map((skill) => Chip(
         label: Text(skill),
-        backgroundColor: Colors.blue.shade50,
-        side: const BorderSide(color: Colors.blue),
-      ))
-          .toList(),
+        backgroundColor: Colors.blue.withOpacity(0.1),
+        labelStyle: const TextStyle(color: Colors.blue),
+      )).toList(),
     );
   }
 
   Widget _buildProjects() {
     return Column(
       children: [
-        _projectCard('E-commerce Sales Dashboard', 'Python & Power BI', '2 months ago'),
-        const SizedBox(height: 12),
-        _projectCard('Student Management System', 'Flutter + Firebase', '1 month ago'),
+        _projectCard('E-commerce App', 'Flutter + Firebase'),
+        _projectCard('Weather App', 'API Integration'),
       ],
     );
   }
 
-  Widget _projectCard(String title, String subtitle, String time) {
+  Widget _projectCard(String title, String subtitle) {
     return Card(
+      margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        leading: const Icon(Iconsax.code, color: Colors.blue, size: 40),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        leading: const Icon(Iconsax.code, color: Colors.purple),
+        title: Text(title),
         subtitle: Text(subtitle),
-        trailing: Text(time, style: const TextStyle(color: Colors.grey, fontSize: 12)),
       ),
     );
   }
+  Widget _buildSocialLinks() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _socialImage('assets/images/linked resized.jpg', () {}),      // LinkedIn
+        const SizedBox(width: 24),
+        _socialImage('assets/images/github logo resized.png', () {}), // GitHub
+        const SizedBox(width: 24),
+        _socialImage('assets/images/instagram logo resized.jpg', () {}), // Instagram
+        const SizedBox(width: 24),
+        _socialImage('assets/images/facebook resized.png', () {}),             // Portfolio / Website (you can change)
+      ],
+    );
+  }
 
-  Widget _buildEducation() {
-    return const Card(
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Iconsax.book, color: Colors.blue),
-              title: Text('B.Sc. Computer Science'),
-              subtitle: Text('Tribhuvan University • 2022 - Present'),
-              trailing: Text('3.75 CGPA'),
-            ),
-          ],
+  Widget _socialImage(String imagePath, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          shape: BoxShape.circle,
+        ),
+        child: ClipOval(
+          child: Image.asset(
+            imagePath,
+            width: 45,
+            height: 45,
+            fit: BoxFit.cover,
+          ),
         ),
       ),
     );
   }
-
   Widget _buildResumeCard() {
     return Card(
       child: ListTile(
-        leading: const Icon(Iconsax.document_text, color: Colors.blue, size: 40),
-        title: const Text('Resume.pdf'),
-        subtitle: const Text('Updated 3 days ago'),
-        trailing: ElevatedButton.icon(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Resume downloaded (Demo)')),
-            );
-          },
-          icon: const Icon(Iconsax.arrow_down),
-          label: const Text('Download'),
+        leading: const Icon(Iconsax.document_download, color: Colors.green),
+        title: const Text('Resume'),
+        subtitle: const Text('Bipin_Ranabhat_Resume.pdf'),
+        trailing: ElevatedButton(
+          onPressed: () {},
+          child: const Text('Download'),
         ),
       ),
     );
