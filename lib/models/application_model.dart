@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 class Application {
-  final String title;
-  final String company;
-  final String status;
-  final String date;
-  final Color color;
+  String title;
+  String company;
+  String status;
+  String date;
+  Color color;
 
   Application({
     required this.title,
