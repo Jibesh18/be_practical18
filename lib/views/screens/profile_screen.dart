@@ -25,7 +25,7 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 50),
                   const CircleAvatar(
                     radius: 50,
-                    backgroundImage: AssetImage('assets/images/profile.png'),
+                    backgroundImage: AssetImage('assets/images/profilepic resized.jpg'),
                   ),
                   const SizedBox(height: 12),
                   const Text(
@@ -128,7 +128,7 @@ class ProfileScreen extends StatelessWidget {
       runSpacing: 8,
       children: skills.map((skill) => Chip(
         label: Text(skill),
-        backgroundColor: Colors.blue.withOpacity(0.1),
+        backgroundColor: Colors.blue.withValues(alpha: 0.1),
         labelStyle: const TextStyle(color: Colors.blue),
       )).toList(),
     );
