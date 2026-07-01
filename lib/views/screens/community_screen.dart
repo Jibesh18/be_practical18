@@ -27,14 +27,29 @@ class CommunityScreen extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: CommunityPostCard(post: post),
               )),
+
               const SizedBox(height: 30),
-              const Text('Success Stories', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+
+              // Success Stories Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Success Stories', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  TextButton.icon(
+                    onPressed: () => _showShareJourneyDialog(context),
+                    icon: const Icon(Iconsax.add, size: 18),
+                    label: const Text('Share Your Journey'),
+                  ),
+                ],
+              ),
               const SizedBox(height: 12),
+
               const Card(
                 child: Padding(
                   padding: EdgeInsets.all(16),
                   child: Text(
-                    '🎉 Congratulations to Sujal who got selected as Data Science Intern at F1Soft!\n\n"Never stop applying and keep learning" - Sujal',
+                    '🎉 Congratulations to Sujal who got selected as Data Science Intern at F1Soft!\n\n'
+                        '"Never stop applying and keep learning" - Sujal',
                     style: TextStyle(fontSize: 15),
                   ),
                 ),
@@ -44,10 +59,84 @@ class CommunityScreen extends StatelessWidget {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Add new post
-        },
+        onPressed: () => _showAskQuestionDialog(context),
         child: const Icon(Iconsax.add),
+      ),
+    );
+  }
+
+  // Ask Question Dialog
+  void _showAskQuestionDialog(BuildContext context) {
+    final TextEditingController controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Ask a Question'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: 'What do you want to ask?'),
+          maxLines: 4,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Question posted!')),
+                );
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Post'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Share Journey Dialog
+  void _showShareJourneyDialog(BuildContext context) {
+    final TextEditingController titleController = TextEditingController();
+    final TextEditingController storyController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Share Your Success Story'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(hintText: 'Title (e.g. Got Selected at XYZ)'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: storyController,
+              decoration: const InputDecoration(hintText: 'Share your journey...'),
+              maxLines: 5,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (storyController.text.trim().isNotEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Success story shared! 🎉')),
+                );
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Share Story'),
+          ),
+        ],
       ),
     );
   }
@@ -79,10 +168,7 @@ class CommunityPostCard extends StatelessWidget {
           },
           child: Text(
             post.answers,
-            style: const TextStyle(
-              color: Colors.blue,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.w600),
           ),
         ),
       ),
