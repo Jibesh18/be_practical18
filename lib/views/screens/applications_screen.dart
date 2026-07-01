@@ -15,20 +15,41 @@ class ApplicationsScreen extends StatelessWidget {
         title: const Text('My Applications', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
-      body: Consumer<ApplicationsViewModel>(
-        builder: (context, viewModel, child) {
-          if (viewModel.applications.isEmpty) {
-            return const Center(child: Text('No applications yet.'));
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: viewModel.applications.length,
-            itemBuilder: (context, index) {
-              final application = viewModel.applications[index];
-              return ApplicationCard(application: application);
-            },
-          );
-        },
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Consumer<ApplicationsViewModel>(
+              builder: (context, viewModel, child) {
+                return TextField(
+                  onChanged: (value) => viewModel.searchApplications(value),
+                  decoration: InputDecoration(
+                    hintText: 'Search applications...',
+                    prefixIcon: const Icon(Iconsax.search_normal),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                  ),
+                );
+              },
+            ),
+          ),
+          Expanded(
+            child: Consumer<ApplicationsViewModel>(
+              builder: (context, viewModel, child) {
+                if (viewModel.applications.isEmpty) {
+                  return const Center(child: Text('No applications found.'));
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: viewModel.applications.length,
+                  itemBuilder: (context, index) {
+                    final application = viewModel.applications[index];
+                    return ApplicationCard(application: application);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
