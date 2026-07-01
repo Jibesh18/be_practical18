@@ -1,4 +1,7 @@
-import 'package:be_practical18/viewmodels/ai_agent_viewmodel.dart';
+import 'package:be_practical18/viewmodels/applications_viewmodel.dart';
+import 'package:be_practical18/viewmodels/community_viewmodel.dart';
+import 'package:be_practical18/viewmodels/dashboard_viewmodel.dart';
+import 'package:be_practical18/viewmodels/employer_viewmodel.dart';
 import 'package:be_practical18/viewmodels/internship_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -22,7 +25,6 @@ Future<void> main() async {
       rethrow;
     }
   }
-
   runApp(const BePracticalApp());
 }
 
@@ -36,8 +38,12 @@ class BePracticalApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SplashViewModel()),
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
         ChangeNotifierProvider(create: (_) => InternshipViewModel()),
-        ChangeNotifierProvider(create: (_) => AIAgentViewModel()),
+        // REMOVED: ChangeNotifierProvider(create: (_) => AIAgentViewModel()),
         ChangeNotifierProvider(create: (_) => ResourcesProvider()),
+        ChangeNotifierProvider(create: (_) => ApplicationsViewModel()),
+        ChangeNotifierProvider(create: (_) => CommunityViewModel()),
+        ChangeNotifierProvider(create: (_) => DashboardViewModel()),
+        ChangeNotifierProvider(create: (_) => EmployerViewModel()),
       ],
       child: MaterialApp(
         title: 'Be Practical',

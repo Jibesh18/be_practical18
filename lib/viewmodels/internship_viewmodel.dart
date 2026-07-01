@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import '../models/internship_model.dart';
 import '../models/application_model.dart';
+import '../models/internship_model.dart';
 import '../services/internship_service.dart';
 
 class InternshipViewModel extends ChangeNotifier {
   final InternshipService _service = InternshipService();
 
-  // ── Streams exposed to UI ──────────────────────────────────────────
+  // ── Streams ───────────────────────────────────────────────────────────────
   Stream<List<InternshipModel>> get allInternships =>
       _service.getAllInternships();
 
@@ -16,9 +16,9 @@ class InternshipViewModel extends ChangeNotifier {
   Stream<List<ApplicationModel>> getMyApplications(String uid) =>
       _service.getMyApplications(uid);
 
-  // ── Filter state ───────────────────────────────────────────────────
+  // ── Filter state ──────────────────────────────────────────────────────────
   String _searchQuery = '';
-  String _selectedType = 'All'; // 'All', 'Remote', 'On-site', 'Hybrid'
+  String _selectedType = 'All';
   String _selectedLocation = 'All';
 
   String get searchQuery => _searchQuery;
@@ -47,28 +47,25 @@ class InternshipViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Client-side filtering ──────────────────────────────────────────
+  // ── Filtering logic lives in ViewModel ────────────────────────────────────
   List<InternshipModel> applyFilters(List<InternshipModel> all) {
     return all.where((i) {
-      final matchesQuery = _searchQuery.isEmpty ||
-          i.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          i.company.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          i.skills.any((s) =>
-              s.toLowerCase().contains(_searchQuery.toLowerCase()));
+      final q = _searchQuery.toLowerCase();
+      final matchesQuery = q.isEmpty ||
+          i.title.toLowerCase().contains(q) ||
+          i.company.toLowerCase().contains(q) ||
+          i.skills.any((s) => s.toLowerCase().contains(q));
 
-      final matchesType =
-          _selectedType == 'All' || i.type == _selectedType;
+      final matchesType = _selectedType == 'All' || i.type == _selectedType;
 
       final matchesLocation = _selectedLocation == 'All' ||
-          i.location
-              .toLowerCase()
-              .contains(_selectedLocation.toLowerCase());
+          i.location.toLowerCase().contains(_selectedLocation.toLowerCase());
 
       return matchesQuery && matchesType && matchesLocation;
     }).toList();
   }
 
-  // ── Apply action ───────────────────────────────────────────────────
+  // ── Apply action ──────────────────────────────────────────────────────────
   bool _isApplying = false;
   String? _applyError;
 
@@ -84,7 +81,6 @@ class InternshipViewModel extends ChangeNotifier {
     _isApplying = true;
     _applyError = null;
     notifyListeners();
-
     try {
       final alreadyApplied =
       await _service.hasApplied(internship.id, applicantId);
@@ -92,7 +88,6 @@ class InternshipViewModel extends ChangeNotifier {
         _applyError = 'You have already applied to this internship.';
         return false;
       }
-
       final application = ApplicationModel(
         id: '',
         internshipId: internship.id,
@@ -105,10 +100,9 @@ class InternshipViewModel extends ChangeNotifier {
         status: 'pending',
         appliedAt: DateTime.now(),
       );
-
       await _service.applyToInternship(application);
       return true;
-    } catch (e) {
+    } catch (_) {
       _applyError = 'Something went wrong. Please try again.';
       return false;
     } finally {

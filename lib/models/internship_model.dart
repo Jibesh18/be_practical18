@@ -15,6 +15,11 @@ class InternshipModel {
   final String employerName;
   final DateTime postedAt;
   final bool isActive;
+  // NEW: 3-state lifecycle. 'active' | 'paused' | 'ended'.
+  // Kept alongside isActive (derived from this) so existing intern-facing
+  // queries that filter on isActive==true keep working without changes.
+  // Ended internships are never shown to interns and CANNOT be reopened.
+  final String status;
 
   InternshipModel({
     required this.id,
@@ -31,10 +36,21 @@ class InternshipModel {
     required this.employerName,
     required this.postedAt,
     required this.isActive,
+    this.status = 'active',
   });
+
+  bool get isEnded => status == 'ended';
+  bool get isPaused => status == 'paused';
+  bool get isLive => status == 'active';
 
   // Firestore → Model
   factory InternshipModel.fromMap(Map<String, dynamic> map, String id) {
+    // Backward-compatible: older documents have no 'status' field, only
+    // 'isActive'. Derive a sensible status from isActive in that case.
+    final rawStatus = map['status'] as String?;
+    final isActiveField = map['isActive'] ?? true;
+    final derivedStatus = rawStatus ?? (isActiveField ? 'active' : 'paused');
+
     return InternshipModel(
       id: id,
       title: map['title'] ?? '',
@@ -49,7 +65,8 @@ class InternshipModel {
       postedBy: map['postedBy'] ?? '',
       employerName: map['employerName'] ?? '',
       postedAt: (map['postedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      isActive: map['isActive'] ?? true,
+      isActive: derivedStatus == 'active',
+      status: derivedStatus,
     );
   }
 
@@ -69,6 +86,7 @@ class InternshipModel {
       'employerName': employerName,
       'postedAt': FieldValue.serverTimestamp(),
       'isActive': isActive,
+      'status': status,
     };
   }
 }

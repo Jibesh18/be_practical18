@@ -3,16 +3,79 @@ import '../models/internship_model.dart';
 import '../models/application_model.dart';
 
 class InternshipService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
-  // Post a new internship
+  // ── Internships ──────────────────────────────────────────────────────────
+
   Future<void> postInternship(InternshipModel internship) async {
-    await _firestore.collection('internships').add(internship.toMap());
+    await firestore.collection('internships').add(internship.toMap());
   }
 
-  // Get all active internships (for intern seeker)
+  Future<void> updateInternship(InternshipModel internship) async {
+    await firestore.collection('internships').doc(internship.id).update({
+      'title': internship.title,
+      'company': internship.company,
+      'location': internship.location,
+      'type': internship.type,
+      'duration': internship.duration,
+      'stipend': internship.stipend,
+      'description': internship.description,
+      'requirements': internship.requirements,
+      'skills': internship.skills,
+      'isActive': internship.isActive,
+    });
+  }
+
+  Future<void> toggleInternshipStatus(
+      String internshipId, bool isActive) async {
+    await firestore
+        .collection('internships')
+        .doc(internshipId)
+        .update({
+      'isActive': isActive,
+      'status': isActive ? 'active' : 'paused',
+    });
+  }
+
+  // FIXED: Batch delete — also closes undecided applications so interns
+  // see "Position Closed" instead of being stuck on "Pending" forever.
+  Future<void> deleteInternship(String internshipId) async {
+    final batch = firestore.batch();
+    batch.delete(firestore.collection('internships').doc(internshipId));
+
+    final appsSnap = await firestore
+        .collection('applications')
+        .where('internshipId', isEqualTo: internshipId)
+        .where('status', whereIn: ['pending', 'reviewed'])
+        .get();
+    for (final doc in appsSnap.docs) {
+      batch.update(doc.reference, {'status': 'closed'});
+    }
+    await batch.commit();
+  }
+
+  // FIXED: Batch end — marks internship as ended AND closes undecided
+  // applications in one atomic write. Cannot be undone.
+  Future<void> endInternship(String internshipId) async {
+    final batch = firestore.batch();
+    batch.update(
+      firestore.collection('internships').doc(internshipId),
+      {'isActive': false, 'status': 'ended'},
+    );
+
+    final appsSnap = await firestore
+        .collection('applications')
+        .where('internshipId', isEqualTo: internshipId)
+        .where('status', whereIn: ['pending', 'reviewed'])
+        .get();
+    for (final doc in appsSnap.docs) {
+      batch.update(doc.reference, {'status': 'closed'});
+    }
+    await batch.commit();
+  }
+
   Stream<List<InternshipModel>> getAllInternships() {
-    return _firestore
+    return firestore
         .collection('internships')
         .where('isActive', isEqualTo: true)
         .orderBy('postedAt', descending: true)
@@ -22,9 +85,8 @@ class InternshipService {
         .toList());
   }
 
-  // Get internships posted by a specific employer
   Stream<List<InternshipModel>> getEmployerInternships(String employerId) {
-    return _firestore
+    return firestore
         .collection('internships')
         .where('postedBy', isEqualTo: employerId)
         .orderBy('postedAt', descending: true)
@@ -34,14 +96,14 @@ class InternshipService {
         .toList());
   }
 
-  // Apply to an internship
+  // ── Applications ─────────────────────────────────────────────────────────
+
   Future<void> applyToInternship(ApplicationModel application) async {
-    await _firestore.collection('applications').add(application.toMap());
+    await firestore.collection('applications').add(application.toMap());
   }
 
-  // Check if user already applied
   Future<bool> hasApplied(String internshipId, String userId) async {
-    final snap = await _firestore
+    final snap = await firestore
         .collection('applications')
         .where('internshipId', isEqualTo: internshipId)
         .where('applicantId', isEqualTo: userId)
@@ -49,9 +111,9 @@ class InternshipService {
     return snap.docs.isNotEmpty;
   }
 
-  // Get applications for an intern
+  /// Applications submitted BY an intern (for their "My Applications" screen)
   Stream<List<ApplicationModel>> getMyApplications(String userId) {
-    return _firestore
+    return firestore
         .collection('applications')
         .where('applicantId', isEqualTo: userId)
         .orderBy('appliedAt', descending: true)
@@ -61,40 +123,27 @@ class InternshipService {
         .toList());
   }
 
-  // Get applicants for an employer's internship
-  Stream<List<ApplicationModel>> getApplicants(String internshipId) {
-    return _firestore
+  /// All applicants for a specific internship (employer view).
+  // FIXED: now requires employerId too, and filters by BOTH internshipId
+  // AND employerId in the same query. This matches the Firestore security
+  // rule (which checks resource.data.employerId == request.auth.uid) so
+  // the query can actually be validated and won't get PERMISSION_DENIED.
+  Stream<List<ApplicationModel>> getApplicants(
+      String internshipId, String employerId) {
+    return firestore
         .collection('applications')
         .where('internshipId', isEqualTo: internshipId)
+        .where('employerId', isEqualTo: employerId)
+        .orderBy('appliedAt', descending: true)
         .snapshots()
         .map((snap) => snap.docs
         .map((doc) => ApplicationModel.fromMap(doc.data(), doc.id))
         .toList());
   }
 
-  // Delete an internship
-  Future<void> deleteInternship(String internshipId) async {
-    await _firestore.collection('internships').doc(internshipId).delete();
-  }
-
-  // Toggle active/inactive
-  Future<void> toggleInternshipStatus(String internshipId, bool isActive) async {
-    await _firestore
-        .collection('internships')
-        .doc(internshipId)
-        .update({'isActive': isActive});
-  }
-  // Update application status (accept/reject)
-  Future<void> updateApplicationStatus(String applicationId, String status) async {
-    await _firestore
-        .collection('applications')
-        .doc(applicationId)
-        .update({'status': status});
-  }
-
-// Get ALL applications for ALL internships by an employer
+  /// All applications across all internships posted by an employer
   Stream<List<ApplicationModel>> getEmployerApplications(String employerId) {
-    return _firestore
+    return firestore
         .collection('applications')
         .where('employerId', isEqualTo: employerId)
         .orderBy('appliedAt', descending: true)
@@ -102,5 +151,13 @@ class InternshipService {
         .map((snap) => snap.docs
         .map((doc) => ApplicationModel.fromMap(doc.data(), doc.id))
         .toList());
+  }
+
+  Future<void> updateApplicationStatus(
+      String applicationId, String status) async {
+    await firestore
+        .collection('applications')
+        .doc(applicationId)
+        .update({'status': status});
   }
 }

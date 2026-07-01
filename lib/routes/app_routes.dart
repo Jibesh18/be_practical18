@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../views/screens/employer_home_screen.dart';
-import '../views/screens/intern_home_screen.dart';
+
+import '../views/screens/intern_screen.dart';
 import '../views/screens/splash_screen.dart';
 import '../views/screens/login_screen.dart';
 import '../views/screens/register_screen.dart';
 import '../views/widgets/auth_gate.dart';
 
-
-  class AppRoutes {
+class AppRoutes {
   static const String splash = '/';
   static const String login = '/login';
   static const String register = '/register';
@@ -17,14 +17,13 @@ import '../views/widgets/auth_gate.dart';
   static const String internHome = '/internHome';
 
   static Map<String, WidgetBuilder> get routes => {
-  splash: (context) => const SplashScreen(),
-  login: (context) => const LoginScreen(),
-  register: (context) => const RegisterScreen(),
-  authGate: (context) => const AuthGate(),
-  employerHome: (context) => const EmployerHomeScreen(),
-  internHome: (context) => const InternHomeScreen(),
+    splash: (context) => const SplashScreen(),
+    login: (context) => const LoginScreen(),
+    register: (context) => const RegisterScreen(),
+    authGate: (context) => const AuthGate(),
+    employerHome: (context) => const EmployerHomeScreen(),
+    internHome: (context) => const InternScreen(),
   };
-
 
   static Route<dynamic> smoothRoute(Widget page) {
     return PageRouteBuilder(
@@ -36,35 +35,17 @@ import '../views/widgets/auth_gate.dart';
           parent: animation,
           curve: const Interval(0.18, 1.0, curve: Curves.easeInOutCubic),
         );
-
         final slide = Tween<Offset>(
           begin: const Offset(0, 0.02),
           end: Offset.zero,
-        ).animate(
-          CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-          ),
-        );
-
-        final scale = Tween<double>(
-          begin: 0.992,
-          end: 1.0,
-        ).animate(
-          CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-          ),
-        );
-
+        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+        final scale = Tween<double>(begin: 0.992, end: 1.0)
+            .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
         return FadeTransition(
           opacity: fade,
           child: SlideTransition(
             position: slide,
-            child: ScaleTransition(
-              scale: scale,
-              child: child,
-            ),
+            child: ScaleTransition(scale: scale, child: child),
           ),
         );
       },
