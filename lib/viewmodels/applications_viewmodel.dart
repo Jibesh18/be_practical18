@@ -26,7 +26,28 @@ class ApplicationsViewModel extends ChangeNotifier {
     ),
   ];
 
-  List<Application> get applications => _applications;
+  List<Application> _filteredApplications = [];
+  String _searchQuery = '';
+
+  ApplicationsViewModel() {
+    _filteredApplications = _applications;
+  }
+
+  List<Application> get applications => _filteredApplications;
+
+  void searchApplications(String query) {
+    _searchQuery = query;
+    if (query.isEmpty) {
+      _filteredApplications = _applications;
+    } else {
+      _filteredApplications = _applications
+          .where((application) =>
+              application.title.toLowerCase().contains(query.toLowerCase()) ||
+              application.company.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    }
+    notifyListeners();
+  }
 
   /// Apply for new internship (Called from InternshipsScreen)
   void applyForInternship({
@@ -42,6 +63,7 @@ class ApplicationsViewModel extends ChangeNotifier {
     );
 
     _applications.insert(0, newApplication); // Add at the top
+    searchApplications(_searchQuery); // Refresh filtered list
     notifyListeners();
   }
 

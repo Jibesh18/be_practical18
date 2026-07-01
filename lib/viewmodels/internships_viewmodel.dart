@@ -41,13 +41,26 @@ class InternshipsViewModel extends ChangeNotifier {
     ),
   ];
 
-  List<Internship> get internships => _internships;
+  List<Internship> _filteredInternships = [];
+  String _searchQuery = '';
 
-  // Search functionality
-  List<Internship> searchInternships(String query) {
-    if (query.isEmpty) return _internships;
-    return _internships.where((internship) =>
-    internship.title.toLowerCase().contains(query.toLowerCase()) ||
-        internship.company.toLowerCase().contains(query.toLowerCase())).toList();
+  InternshipsViewModel() {
+    _filteredInternships = _internships;
+  }
+
+  List<Internship> get internships => _filteredInternships;
+
+  void searchInternships(String query) {
+    _searchQuery = query;
+    if (query.isEmpty) {
+      _filteredInternships = _internships;
+    } else {
+      _filteredInternships = _internships
+          .where((internship) =>
+              internship.title.toLowerCase().contains(query.toLowerCase()) ||
+              internship.company.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    }
+    notifyListeners();
   }
 }
