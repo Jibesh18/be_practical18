@@ -3,6 +3,7 @@ import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../../viewmodels/applications_viewmodel.dart';
+import 'internship_detail_screen.dart';
 
 class InternshipsScreen extends StatelessWidget {
   const InternshipsScreen({super.key});
@@ -36,9 +37,11 @@ class InternshipsScreen extends StatelessWidget {
                 children: [
                   _buildInternshipCard(
                     context,
+                    id: '1',
                     title: 'Data Analyst Intern',
                     company: 'ABC Tech',
                     location: 'Kathmandu',
+                    stipend: '15,000',
                     onApply: () => applicationVM.applyForInternship(
                       title: 'Data Analyst Intern',
                       company: 'ABC Tech',
@@ -46,9 +49,11 @@ class InternshipsScreen extends StatelessWidget {
                   ),
                   _buildInternshipCard(
                     context,
+                    id: '2',
                     title: 'Flutter Developer Intern',
                     company: 'TechNepal',
                     location: 'Remote',
+                    stipend: '12,000',
                     onApply: () => applicationVM.applyForInternship(
                       title: 'Flutter Developer Intern',
                       company: 'TechNepal',
@@ -56,9 +61,11 @@ class InternshipsScreen extends StatelessWidget {
                   ),
                   _buildInternshipCard(
                     context,
+                    id: '3',
                     title: 'Digital Marketing Intern',
                     company: 'GrowthHub',
                     location: 'Kathmandu',
+                    stipend: '8,000',
                     onApply: () => applicationVM.applyForInternship(
                       title: 'Digital Marketing Intern',
                       company: 'GrowthHub',
@@ -72,11 +79,14 @@ class InternshipsScreen extends StatelessWidget {
       ),
     );
   }
+
   Widget _buildInternshipCard(
       BuildContext context, {
+        required String id,
         required String title,
         required String company,
         required String location,
+        required String stipend,
         required VoidCallback onApply,
       }) {
     return Card(
@@ -85,25 +95,40 @@ class InternshipsScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            // Left side - Internship Info
+            // Clickable Job Information
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text('$company • $location', style: const TextStyle(color: Colors.grey)),
-                ],
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => InternshipDetailScreen(
+                        id: id,
+                        title: title,
+                        company: company,
+                        location: location,
+                        stipend: stipend,
+                      ),
+                    ),
+                  );
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text('$company • $location', style: const TextStyle(color: Colors.grey)),
+                  ],
+                ),
               ),
             ),
 
-            // Right side - Apply Button
+            // Apply Button
             ElevatedButton(
               onPressed: onApply,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
               child: const Text('Apply Now'),
             ),
@@ -111,4 +136,5 @@ class InternshipsScreen extends StatelessWidget {
         ),
       ),
     );
-  }}
+  }
+}
