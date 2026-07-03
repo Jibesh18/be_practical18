@@ -11,11 +11,8 @@ import '../tabs/community_tab.dart';
 import '../tabs/intern_home_tab.dart';
 import '../tabs/intern_search_tab.dart';
 import '../tabs/profile_tab.dart';
-// FIXED: Removed unused import '../tabs/ai_agent_tab.dart'
-// AI now lives only on the Employer side (AI Picks tab for candidate matching).
-// Intern side keeps Community instead.
 
-// ── Palette matching splash screen ──────────────────────────────────────────
+// Palette matching splash screen
 const _kLogoBlue = Color(0xFF1F4BAE);
 
 class InternScreen extends StatelessWidget {
@@ -61,8 +58,8 @@ class InternScreen extends StatelessWidget {
                 unselectedItemColor: isDark
                     ? AppColors.darkTextSecondary
                     : AppColors.lightTextSecondary,
-                selectedLabelStyle: AppTextStyles.labelSmall
-                    .copyWith(fontWeight: FontWeight.w700),
+                selectedLabelStyle:
+                AppTextStyles.labelSmall.copyWith(fontWeight: FontWeight.w700),
                 unselectedLabelStyle: AppTextStyles.labelSmall,
                 currentIndex: viewModel.currentIndex,
                 onTap: viewModel.setIndex,

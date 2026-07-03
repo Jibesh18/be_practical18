@@ -24,10 +24,14 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> {
   int _currentIndex = 0;
 
   @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+Widget build(BuildContext context) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final tabs = [
+  return ChangeNotifierProvider(
+    create: (_) => EmployerViewModel(),
+    child: Builder(
+      builder: (context) {
+        final tabs = [
       _EmployerDashboardTab(
           onNavigate: (i) => setState(() => _currentIndex = i)),
       const EmployerListingsTab(),
@@ -79,6 +83,9 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> {
         ),
       ),
     );
+      },
+    ),
+  );
   }
 }
 
@@ -173,14 +180,7 @@ class _EmployerDashboardTab extends StatelessWidget {
                       isDark: isDark,
                       // CHANGED: pushes full applicants screen instead of
                       // navigating to AI Picks tab (tab 3)
-                      onViewAll: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => AllApplicantsScreen(
-                            employerId: uid,
-                          ),
-                        ),
-                      ),
+                      onViewAll: () => onNavigate(3),
                     ),
                   ),
                 ),
