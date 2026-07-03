@@ -58,7 +58,21 @@ class _EmployerPostTabState extends State<EmployerPostTab> {
     _skillInputController.dispose();
     super.dispose();
   }
-
+  void _resetForm() {
+    _formKey.currentState?.reset();
+    _titleController.clear();
+    _companyController.clear();
+    _locationController.clear();
+    _durationController.clear();
+    _stipendController.clear();
+    _descriptionController.clear();
+    _requirementsController.clear();
+    _skillInputController.clear();
+    setState(() {
+      _skills.clear();
+      _selectedType = 'Remote';
+    });
+  }
   void _addSkill() {
     final skill = _skillInputController.text.trim();
     if (skill.isEmpty || _skills.contains(skill)) return;
@@ -126,7 +140,13 @@ class _EmployerPostTabState extends State<EmployerPostTab> {
           backgroundColor: AppColors.success,
         ),
       );
-      Navigator.pop(context);
+      if (widget.editing != null) {
+        // Pushed as an edit route — safe to pop
+        Navigator.pop(context);
+      } else {
+        // Running as a bottom nav tab — reset the form instead
+        _resetForm();
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

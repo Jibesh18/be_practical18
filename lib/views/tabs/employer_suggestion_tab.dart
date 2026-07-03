@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 
 import '../../models/application_model.dart';
 import '../../models/internship_model.dart';
-import '../../services/ai_services.dart';
 import '../../themes/app_colors.dart';
 import '../../themes/app_textstyles.dart';
 import '../../viewmodels/auth_viewmodel.dart';
@@ -13,84 +12,16 @@ import '../../viewmodels/employer_viewmodel.dart';
 const _kLogoBlue   = Color(0xFF1D4BAE);
 const _kBlueBright = Color(0xFF4A7FE0);
 
-// FIXED: Removed `required this.employerId` constructor parameter.
-// The widget now reads the employer UID from AuthViewModel internally,
+// The widget reads the employer UID from AuthViewModel internally,
 // exactly like EmployerListingsTab, EmployerProfileTab, etc.
-// This is why `const EmployerSuggestionsTab()` now compiles correctly.
-class EmployerSuggestionsTab extends StatefulWidget {
-  const EmployerSuggestionsTab({super.key}); // ← FIXED: no more required employerId
-
-  @override
-  State<EmployerSuggestionsTab> createState() => _EmployerSuggestionsTabState();
-}
-
-class _EmployerSuggestionsTabState extends State<EmployerSuggestionsTab> {
-  Map<String, String?> _aiResults = {}; // internshipId → AI suggestion text
-  Map<String, bool> _loading = {};      // internshipId → isLoading
-
-  Future<void> _getAISuggestion(
-      BuildContext context,
-      InternshipModel listing,
-      List<ApplicationModel> applicants,
-      ) async {
-    if (_loading[listing.id] == true) return;
-
-    setState(() => _loading[listing.id] = true);
-
-    try {
-      final applicantDetails = applicants.map((a) =>
-      '- ${a.applicantName} (${a.applicantEmail}) – Status: ${a.status}'
-      ).join('\n');
-
-      final prompt = '''
-You are an expert HR advisor helping an employer choose the best intern.
-
-Internship: ${listing.title}
-Company: ${listing.company}
-Location: ${listing.type} · ${listing.location}
-Duration: ${listing.duration}
-Required Skills: ${listing.skills.join(', ')}
-Description: ${listing.description}
-Requirements: ${listing.requirements}
-
-Applicants who applied:
-$applicantDetails
-
-Based on the internship requirements and applicant information available, provide:
-1. A brief analysis of what kind of candidate would be ideal (2-3 sentences)
-2. If there are applicants, suggest which ones seem most promising based on their names/emails and the role, and why
-3. 3-4 specific interview questions the employer should ask to identify the best fit
-4. One red flag to watch out for when selecting
-
-Keep your response concise, practical, and actionable. Format with clear sections.
-''';
-
-      final response = await _fetchSuggestion(prompt, listing);
-      setState(() => _aiResults[listing.id] = response);
-    } catch (e) {
-      setState(() => _aiResults[listing.id] = 'Could not get AI suggestions. Please try again.');
-    } finally {
-      setState(() => _loading[listing.id] = false);
-    }
-  }
-
-  Future<String> _fetchSuggestion(String prompt, InternshipModel listing) async {
-    // Real Gemini API call via the shared AIService.
-    const systemPrompt =
-        'You are an expert HR advisor helping employers evaluate internship '
-        'candidates. Be concise, practical, and structured with clear sections.';
-    return AIService.ask(
-      prompt: prompt,
-      systemPrompt: systemPrompt,
-      maxOutputTokens: 800,
-    );
-  }
+class EmployerSuggestionsTab extends StatelessWidget {
+  const EmployerSuggestionsTab({super.key});
 
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<EmployerViewModel>();
-    final authVM = context.watch<AuthViewModel>(); // ← ADDED: read uid here
-    final employerId = authVM.currentUser?.uid ?? ''; // ← ADDED
+    final authVM = context.watch<AuthViewModel>();
+    final employerId = authVM.currentUser?.uid ?? '';
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SafeArea(
@@ -144,7 +75,7 @@ Keep your response concise, practical, and actionable. Format with clear section
           // Listings with AI suggestions
           Expanded(
             child: StreamBuilder<List<InternshipModel>>(
-              stream: vm.getMyListings(employerId), // ← FIXED: uses local variable
+              stream: vm.getMyListings(employerId),
               builder: (context, listSnap) {
                 if (listSnap.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -180,10 +111,10 @@ Keep your response concise, practical, and actionable. Format with clear section
                         return _ListingAICard(
                           listing: listing,
                           applicants: applicants,
-                          aiResult: _aiResults[listing.id],
-                          isLoading: _loading[listing.id] ?? false,
+                          aiResult: vm.aiResultFor(listing.id),
+                          isLoading: vm.isAiLoadingFor(listing.id),
                           isDark: isDark,
-                          onGetSuggestion: () => _getAISuggestion(context, listing, applicants),
+                          onGetSuggestion: () => vm.getAISuggestion(listing, applicants),
                         );
                       },
                     );
@@ -199,6 +130,9 @@ Keep your response concise, practical, and actionable. Format with clear section
 }
 
 // ── Listing AI Card ───────────────────────────────────────────────────────────
+// Purely presentational — the _expanded flag here is transient UI state
+// (whether the card is expanded), not business/data state, so it's fine
+// for it to live in a local State object.
 
 class _ListingAICard extends StatefulWidget {
   final InternshipModel listing;

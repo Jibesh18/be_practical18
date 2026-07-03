@@ -18,7 +18,7 @@ class _ResourcesTabState extends State<ResourcesTab> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ResourcesProvider>().fetchResources();
+      context.read<ResourcesViewModel>().fetchResources();
     });
   }
 
@@ -55,7 +55,7 @@ class _ResourcesTabState extends State<ResourcesTab> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ResourcesProvider>();
+    final provider = context.watch<ResourcesViewModel>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SafeArea(

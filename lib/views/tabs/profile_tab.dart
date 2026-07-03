@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../routes/app_routes.dart';
-import '../../services/user_services.dart';
 import '../../themes/app_colors.dart';
 import '../../themes/app_textstyles.dart';
 import '../../viewmodels/auth_viewmodel.dart';
@@ -24,7 +23,7 @@ class ProfileTab extends StatelessWidget {
 
     return SafeArea(
       child: StreamBuilder<UserModel?>(
-        stream: UserService().watchUser(user.uid),
+        stream: authVM.watchUserProfile(user.uid),
         builder: (context, snap) {
           final userModel = snap.data;
 
@@ -240,12 +239,13 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   }
 
   Future<void> _save() async {
-    final user = context.read<AuthViewModel>().currentUser;
+    final authVM = context.read<AuthViewModel>();
+    final user = authVM.currentUser;
     if (user == null) return;
 
     setState(() => _isLoading = true);
     try {
-      await UserService().updateProfile(
+      await authVM.updateProfile(
         uid: user.uid,
         name: _nameC.text.trim(),
         bio: _bioC.text.trim(),
