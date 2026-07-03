@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/application_model.dart';
 import '../models/internship_model.dart';
+import '../services/ai_services.dart';
 import '../services/internship_service.dart';
 
 class EmployerViewModel extends ChangeNotifier {
@@ -185,4 +186,70 @@ class EmployerViewModel extends ChangeNotifier {
 
   Future<void> shortlistApplicant(String applicationId) =>
       _service.updateApplicationStatus(applicationId, 'shortlisted');
+
+  // ── AI candidate suggestions ────────────────────────────────────────────
+  // Moved here from EmployerSuggestionsTab: prompt construction and the
+  // AIService call are business logic, not UI, so they belong in the
+  // ViewModel. The View just reads these maps and calls getAISuggestion().
+  final Map<String, String?> _aiResults = {};
+  final Map<String, bool> _aiLoading = {};
+
+  String? aiResultFor(String internshipId) => _aiResults[internshipId];
+  bool isAiLoadingFor(String internshipId) => _aiLoading[internshipId] ?? false;
+
+  Future<void> getAISuggestion(
+      InternshipModel listing,
+      List<ApplicationModel> applicants,
+      ) async {
+    if (_aiLoading[listing.id] == true) return;
+
+    _aiLoading[listing.id] = true;
+    notifyListeners();
+
+    try {
+      final applicantDetails = applicants
+          .map((a) => '- ${a.applicantName} (${a.applicantEmail}) – Status: ${a.status}')
+          .join('\n');
+
+      final prompt = '''
+You are an expert HR advisor helping an employer choose the best intern.
+
+Internship: ${listing.title}
+Company: ${listing.company}
+Location: ${listing.type} · ${listing.location}
+Duration: ${listing.duration}
+Required Skills: ${listing.skills.join(', ')}
+Description: ${listing.description}
+Requirements: ${listing.requirements}
+
+Applicants who applied:
+$applicantDetails
+
+Based on the internship requirements and applicant information available, provide:
+1. A brief analysis of what kind of candidate would be ideal (2-3 sentences)
+2. If there are applicants, suggest which ones seem most promising based on their names/emails and the role, and why
+3. 3-4 specific interview questions the employer should ask to identify the best fit
+4. One red flag to watch out for when selecting
+
+Keep your response concise, practical, and actionable. Format with clear sections.
+''';
+
+      const systemPrompt =
+          'You are an expert HR advisor helping employers evaluate internship '
+          'candidates. Be concise, practical, and structured with clear sections.';
+
+      final response = await AIService.ask(
+        prompt: prompt,
+        systemPrompt: systemPrompt,
+        maxOutputTokens: 800,
+      );
+
+      _aiResults[listing.id] = response;
+    } catch (e) {
+      _aiResults[listing.id] = 'Could not get AI suggestions. Please try again.';
+    } finally {
+      _aiLoading[listing.id] = false;
+      notifyListeners();
+    }
+  }
 }

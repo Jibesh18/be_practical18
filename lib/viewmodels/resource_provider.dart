@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/resource_model.dart';
 
-class ResourcesProvider extends ChangeNotifier {
+class ResourcesViewModel extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   List<ResourceModel> _resources = [];

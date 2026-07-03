@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../models/user_model.dart';
 
 class AuthViewModel extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -16,6 +17,27 @@ class AuthViewModel extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   String? get userRole => _userRole;
   User? get currentUser => _auth.currentUser;
+  Stream<UserModel?> watchUserProfile(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .map((doc) => doc.exists
+        ? UserModel.fromMap(doc.data()!, doc.id)
+        : null);
+  }
+  Future<void> updateProfile({
+    required String uid,
+    required String name,
+    required String bio,
+    required List<String> skills,
+  }) async {
+    await _firestore.collection('users').doc(uid).update({
+      'name': name.trim(),
+      'bio': bio.trim(),
+      'skills': skills,
+    });
+  }
 
   void _setLoading(bool value) {
     _isLoading = value;
