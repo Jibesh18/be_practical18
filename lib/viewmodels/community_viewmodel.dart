@@ -9,4 +9,16 @@ class CommunityViewModel extends ChangeNotifier {
   ];
 
   List<CommunityPost> get posts => _posts;
+
+  void addPost(String question) {
+    _posts.insert(
+      0,
+      CommunityPost(
+        question: question,
+        author: 'You',
+        answers: '0 answers',
+      ),
+    );
+    notifyListeners();
+  }
 }
