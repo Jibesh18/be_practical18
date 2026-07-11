@@ -8,8 +8,7 @@ import 'package:http/http.dart' as http;
 import '../env.dart';
 
 class AIService {
-  // Key is injected at build time via --dart-define=GEMINI_API_KEY=...
-  // Run with: flutter run --dart-define=GEMINI_API_KEY=your_key_here
+
   static const String _apiKey = String.fromEnvironment(
     'GEMINI_API_KEY',
     defaultValue: geminiApiKey,
