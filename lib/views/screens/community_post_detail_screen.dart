@@ -1,94 +1,211 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
+import 'package:provider/provider.dart';
+
+import '../../models/community_answer.dart';
+import '../../models/community_post.dart';
+import '../../themes/app_colors.dart';
+import '../../themes/app_textstyles.dart';
+import '../../viewmodels/community_viewmodel.dart';
 
 class CommunityPostDetailScreen extends StatefulWidget {
-  final String question;
-  final String author;
-
-  const CommunityPostDetailScreen({
-    super.key,
-    required this.question,
-    required this.author,
-  });
+  final CommunityPost post;
+  const CommunityPostDetailScreen({super.key, required this.post});
 
   @override
   State<CommunityPostDetailScreen> createState() => _CommunityPostDetailScreenState();
 }
 
 class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
-  final TextEditingController _answerController = TextEditingController();
+  final _answerController = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _answerController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendAnswer() async {
+    final text = _answerController.text.trim();
+    if (text.isEmpty || _sending) return;
+
+    setState(() => _sending = true);
+    final vm = context.read<CommunityViewModel>();
+    final success = await vm.addAnswer(postId: widget.post.id, text: text);
+    if (!mounted) return;
+    setState(() => _sending = false);
+
+    if (success) {
+      _answerController.clear();
+      FocusScope.of(context).unfocus();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(vm.answerError ?? 'Something went wrong.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final vm = context.watch<CommunityViewModel>();
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Discussion')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.question, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text('Asked by ${widget.author}', style: const TextStyle(color: Colors.grey)),
-
-            const Divider(height: 30),
-
-            const Text('Answers', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-
-            _answerCard('Great question! Start with understanding the company and common tools used.', 'Rahul Sharma'),
-            _answerCard('Focus on SQL, Python, and Power BI. Practice mock interviews.', 'Priya Thapa'),
-            _answerCard('LeetCode + "Cracking the Coding Interview" book is very helpful.', 'Sujan KC'),
-
-            const SizedBox(height: 30),
-
-            const Text('Add Your Answer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-
-            TextField(
-              controller: _answerController,
-              decoration: const InputDecoration(
-                hintText: 'Write your answer here...',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 5,
-            ),
-
-            const SizedBox(height: 12),
-
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  if (_answerController.text.trim().isNotEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Answer posted successfully!')),
-                    );
-                    _answerController.clear();
-                  }
-                },
-                child: const Text('Post Answer'),
-              ),
-            ),
-          ],
-        ),
+      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+      appBar: AppBar(
+        backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+        elevation: 0,
+        title: Text('Discussion',
+            style: AppTextStyles.titleMedium.copyWith(
+              color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+            )),
+        centerTitle: true,
       ),
-    );
-  }
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                // ── Question ──
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkSurface : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(widget.post.question,
+                          style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Icon(Iconsax.user, size: 14,
+                              color: isDark ? AppColors.darkTextTertiary : AppColors.lightTextTertiary),
+                          const SizedBox(width: 4),
+                          Text(widget.post.authorName,
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                              )),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
 
-  Widget _answerCard(String answer, String author) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(answer),
-            const SizedBox(height: 8),
-            Text('— $author', style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
-          ],
-        ),
+                // ── Answers ──
+                Text('Answers',
+                    style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 10),
+                StreamBuilder<List<CommunityAnswer>>(
+                  stream: vm.answersFor(widget.post.id),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    final answers = snapshot.data ?? [];
+                    if (answers.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Text(
+                          'No answers yet — be the first to help!',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                          ),
+                        ),
+                      );
+                    }
+                    return Column(
+                      children: answers
+                          .map((a) => Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkSurface : Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(a.text, style: AppTextStyles.bodyMedium),
+                            const SizedBox(height: 8),
+                            Text(a.authorName,
+                                style: AppTextStyles.labelSmall.copyWith(
+                                  color: isDark ? AppColors.darkTextTertiary : AppColors.lightTextTertiary,
+                                  fontWeight: FontWeight.w600,
+                                )),
+                          ],
+                        ),
+                      ))
+                          .toList(),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          // ── Reply box ──
+          SafeArea(
+            top: false,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : Colors.white,
+                border: Border(top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _answerController,
+                      minLines: 1,
+                      maxLines: 4,
+                      decoration: InputDecoration(
+                        hintText: 'Write an answer...',
+                        filled: true,
+                        fillColor: isDark ? AppColors.darkBg : AppColors.lightDivider,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _sending
+                      ? const SizedBox(
+                    width: 40, height: 40,
+                    child: Padding(
+                      padding: EdgeInsets.all(8),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                      : IconButton.filled(
+                    onPressed: _sendAnswer,
+                    icon: const Icon(Icons.send_rounded, size: 18),
+                    style: IconButton.styleFrom(
+                      backgroundColor: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                      foregroundColor: isDark ? AppColors.darkBg : Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
