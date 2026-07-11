@@ -22,7 +22,7 @@ class AppRoutes {
     register: (context) => const RegisterScreen(),
     authGate: (context) => const AuthGate(),
     employerHome: (context) => const EmployerHomeScreen(),
-    internHome: (context) => const InternScreen(),
+    internHome: (context) => const InternHomeTab(),
   };
 
   static Route<dynamic> smoothRoute(Widget page) {

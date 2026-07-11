@@ -1,2424 +1,0 @@
-Ôªø
-
-===== employer_home_screen.dart =====
-import 'package:flutter/material.dart';
-import 'package:iconsax_flutter/iconsax_flutter.dart';
-import 'package:provider/provider.dart';
-
-import '../../models/application_model.dart';
-import '../../models/internship_model.dart';
-import '../../themes/app_colors.dart';
-import '../../themes/app_textstyles.dart';
-import '../../viewmodels/auth_viewmodel.dart';
-import '../../viewmodels/employer_viewmodel.dart';
-import '../../routes/app_routes.dart';
-import '../tabs/employers_listings_tab.dart';
-import '../tabs/employer_post_tab.dart';
-import '../tabs/employer_applicants_tab.dart';
-import '../tabs/employer_profile_tab.dart';
-import '../widgets/applicant_card.dart';
-
-class EmployerHomeScreen extends StatefulWidget {
-  const EmployerHomeScreen({super.key});
-
-  @override
-  State<EmployerHomeScreen> createState() => _EmployerHomeScreenState();
-}
-
-class _EmployerHomeScreenState extends State<EmployerHomeScreen> {
-  int _currentIndex = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final tabs = [
-      EmployerDashboardTab(
-          onGoToListings: () => setState(() => _currentIndex = 1)),
-      const EmployerListingsTab(),
-      const EmployerPostTab(),
-      const EmployerApplicantsTab(),
-      const EmployerProfileTab(),
-    ];
-
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: tabs,
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          currentIndex: _currentIndex,
-          onTap: (i) => setState(() => _currentIndex = i),
-          selectedItemColor: AppColors.primary,
-          unselectedItemColor: isDark
-              ? AppColors.darkTextTertiary
-              : AppColors.lightTextTertiary,
-          selectedLabelStyle:
-          AppTextStyles.labelSmall.copyWith(fontWeight: FontWeight.w700),
-          unselectedLabelStyle: AppTextStyles.labelSmall,
-          items: const [
-            BottomNavigationBarItem(
-                icon: Icon(Iconsax.home), label: 'Dashboard'),
-            BottomNavigationBarItem(
-                icon: Icon(Iconsax.briefcase), label: 'Listings'),
-            BottomNavigationBarItem(
-                icon: Icon(Iconsax.add_circle), label: 'Post'),
-            BottomNavigationBarItem(
-                icon: Icon(Iconsax.people), label: 'Applicants'),
-            BottomNavigationBarItem(
-                icon: Icon(Iconsax.profile_circle), label: 'Profile'),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class EmployerDashboardTab extends StatelessWidget {
-  final VoidCallback onGoToListings;
-
-  const EmployerDashboardTab({super.key, required this.onGoToListings});
-
-  @override
-  Widget build(BuildContext context) {
-    final authVM = context.watch<AuthViewModel>();
-    final employerVM = context.watch<EmployerViewModel>();
-    final employerId = authVM.currentUser?.uid ?? '';
-    final name =
-        (authVM.currentUser?.displayName ?? 'Employer').split(' ').first;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
-        SliverToBoxAdapter(
-          child: _DashboardHeader(
-              name: name, employerId: employerId, vm: employerVM),
-        ),
-
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-            child: const _SectionTitle(title: 'Quick Actions'),
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                _QuickActionCard(
-                  icon: Iconsax.add_circle,
-                  label: 'Post\nInternship',
-                  color: AppColors.primary,
-                  onTap: onGoToListings,
-                ),
-                const SizedBox(width: 12),
-                _QuickActionCard(
-                  icon: Iconsax.people,
-                  label: 'View\nApplicants',
-                  color: AppColors.secondary,
-                  onTap: onGoToListings,
-                ),
-                const SizedBox(width: 12),
-                _QuickActionCard(
-                  icon: Iconsax.chart,
-                  label: 'My\nListings',
-                  color: AppColors.success,
-                  onTap: onGoToListings,
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
-            child: const _SectionTitle(title: 'Recent Applications'),
-          ),
-        ),
-
-        if (employerId.isNotEmpty)
-          StreamBuilder<List<ApplicationModel>>(
-            stream: employerVM.getAllMyApplicants(employerId),
-            builder: (context, snap) {
-              if (snap.connectionState == ConnectionState.waiting) {
-                return const SliverToBoxAdapter(
-                  child: Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(20),
-                      child: CircularProgressIndicator(),
-                    ),
-                  ),
-                );
-              }
-              final apps =
-              employerVM.getRecentApplications(snap.data ?? []);
-
-              if (apps.isEmpty) {
-                return SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _EmptyState(
-                      icon: Iconsax.people,
-                      message:
-                      'No applications yet.\nPost an internship to get started!',
-                      isDark: isDark,
-                    ),
-                  ),
-                );
-              }
-
-              return SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                        (context, i) => ApplicantCard(
-                      application: apps[i],
-                      vm: employerVM,
-                      compact: true,
-                    ),
-                    childCount: apps.length,
-                  ),
-                ),
-              );
-            },
-          ),
-
-        const SliverToBoxAdapter(child: SizedBox(height: 100)),
-      ],
-    );
-  }
-}
-
-class _DashboardHeader extends StatelessWidget {
-  final String name;
-  final String employerId;
-  final EmployerViewModel vm;
-
-  const _DashboardHeader({
-    required this.name,
-    required this.employerId,
-    required this.vm,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.darkBg, // Professional Obsidian (0xFF09090B)
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: -60,
-            right: -60,
-            child: Container(
-              width: 220,
-              height: 220,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(colors: [
-                  AppColors.primary.withOpacity(0.22),
-                  Colors.transparent,
-                ]),
-              ),
-            ),
-          ),
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Welcome back, $name √∞≈∏‚Äò‚Äπ',
-                              style: AppTextStyles.titleMedium.copyWith(
-                                color: Colors.white.withOpacity(0.85),
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Employer Dashboard',
-                              style: AppTextStyles.headlineMedium.copyWith(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: Colors.white.withOpacity(0.15)),
-                        ),
-                        child: const Icon(Iconsax.notification,
-                            color: Colors.white, size: 20),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  StreamBuilder<List<InternshipModel>>(
-                    stream: vm.getMyListings(employerId),
-                    builder: (context, listingSnap) {
-                      return StreamBuilder<List<ApplicationModel>>(
-                        stream: vm.getAllMyApplicants(employerId),
-                        builder: (context, appSnap) {
-                          final listings = listingSnap.data ?? [];
-                          final apps = appSnap.data ?? [];
-                          return Row(
-                            children: [
-                              _StatCard(
-                                label: 'Active',
-                                value:
-                                '${vm.getActiveListingCount(listings)}',
-                                icon: Iconsax.briefcase,
-                                color: AppColors.success,
-                              ),
-                              const SizedBox(width: 10),
-                              _StatCard(
-                                label: 'Applicants',
-                                value: '${apps.length}',
-                                icon: Iconsax.people,
-                                color: AppColors.primary,
-                              ),
-                              const SizedBox(width: 10),
-                              _StatCard(
-                                label: 'Pending',
-                                value: '${vm.getPendingCount(apps)}',
-                                icon: Iconsax.clock,
-                                color: AppColors.warning,
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  const _SectionTitle({super.key, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 18,
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(title,
-            style: AppTextStyles.titleLarge
-                .copyWith(fontWeight: FontWeight.w800)),
-      ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(height: 8),
-            Text(value,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900)),
-            const SizedBox(height: 2),
-            Text(label,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickActionCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _QuickActionCard({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.darkSurface : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-                color: isDark
-                    ? AppColors.darkBorder
-                    : AppColors.lightBorder),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2)),
-            ],
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 22),
-              ),
-              const SizedBox(height: 8),
-              Text(label,
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.labelSmall
-                      .copyWith(fontWeight: FontWeight.w700)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String message;
-  final bool isDark;
-
-  const _EmptyState(
-      {required this.icon, required this.message, required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
-      ),
-      child: Column(
-        children: [
-          Icon(icon,
-              size: 48,
-              color: isDark
-                  ? AppColors.darkTextTertiary
-                  : AppColors.lightTextTertiary),
-          const SizedBox(height: 12),
-          Text(message,
-              textAlign: TextAlign.center,
-              style: AppTextStyles.bodyMedium.copyWith(
-                  color: isDark
-                      ? AppColors.darkTextSecondary
-                      : AppColors.lightTextSecondary)),
-        ],
-      ),
-    );
-  }
-}
-
-
-===== employers_listings_tab.dart =====
-import 'package:flutter/material.dart';
-import 'package:iconsax_flutter/iconsax_flutter.dart';
-import 'package:provider/provider.dart';
-
-import '../../models/internship_model.dart';
-import '../../themes/app_colors.dart';
-import '../../themes/app_textstyles.dart';
-import '../../viewmodels/auth_viewmodel.dart';
-import '../../viewmodels/employer_viewmodel.dart';
-
-class EmployerListingsTab extends StatefulWidget {
-  const EmployerListingsTab({super.key});
-
-  @override
-  State<EmployerListingsTab> createState() => _EmployerListingsTabState();
-}
-
-class _EmployerListingsTabState extends State<EmployerListingsTab> {
-  final _searchC = TextEditingController();
-  String _selectedType = 'All';
-  String _selectedStatus = 'All';
-
-  @override
-  void dispose() {
-    _searchC.dispose();
-    super.dispose();
-  }
-
-  bool _matches(InternshipModel item) {
-    final q = _searchC.text.trim().toLowerCase();
-    final matchesQuery = q.isEmpty ||
-        item.title.toLowerCase().contains(q) ||
-        item.company.toLowerCase().contains(q) ||
-        item.skills.any((s) => s.toLowerCase().contains(q));
-    final matchesType = _selectedType == 'All' || item.type == _selectedType;
-    final status = item.isActive ? 'Active' : 'Paused';
-    final matchesStatus = _selectedStatus == 'All' || status == _selectedStatus;
-    return matchesQuery && matchesType && matchesStatus;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final vm = context.watch<EmployerViewModel>();
-    final authVM = context.watch<AuthViewModel>();
-    final user = authVM.currentUser;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    if (user == null) {
-      return const Center(child: Text('Not logged in'));
-    }
-
-    return SafeArea(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('My Listings',
-                    style: AppTextStyles.headlineMedium.copyWith(fontWeight: FontWeight.w800)),
-                const SizedBox(height: 4),
-                Text('Manage your internship posts',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                    )),
-              ],
-            ),
-          ),
-          // Search
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: TextField(
-              controller: _searchC,
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                hintText: 'Search title, skill, location...',
-                prefixIcon: const Icon(Iconsax.search_normal, size: 20),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Filters
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedType,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    ),
-                    items: ['All', 'Remote', 'On-site', 'Hybrid']
-                        .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                        .toList(),
-                    onChanged: (v) => setState(() => _selectedType = v ?? 'All'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedStatus,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    ),
-                    items: ['All', 'Active', 'Paused']
-                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                        .toList(),
-                    onChanged: (v) => setState(() => _selectedStatus = v ?? 'All'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          // List
-          Expanded(
-            child: StreamBuilder<List<InternshipModel>>(
-              stream: vm.getMyListings(user.uid),
-              builder: (context, snap) {
-                if (snap.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final items = (snap.data ?? []).where(_matches).toList();
-                if (items.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Iconsax.briefcase, size: 56,
-                            color: isDark ? AppColors.darkTextTertiary : AppColors.lightTextTertiary),
-                        const SizedBox(height: 16),
-                        Text(
-                          snap.data?.isEmpty == true
-                              ? 'No listings yet.\nTap + to post one!'
-                              : 'No results found.',
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: items.length,
-                  itemBuilder: (context, i) => _ListingCard(listing: items[i], vm: vm),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ListingCard extends StatelessWidget {
-  final InternshipModel listing;
-  final EmployerViewModel vm;
-
-  const _ListingCard({required this.listing, required this.vm});
-
-  void _showEditSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _EditInternshipSheet(listing: listing, vm: vm),
-    );
-  }
-
-  void _confirmDelete(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Delete Listing?', style: TextStyle(fontWeight: FontWeight.w800)),
-        content: Text('This will permanently delete "${listing.title}".'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              vm.deleteInternship(listing.id);
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: listing.isActive
-              ? AppColors.primary.withOpacity(0.25)
-              : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(listing.title,
-                    style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w700)),
-              ),
-              // Toggle active/paused
-              GestureDetector(
-                onTap: () => vm.toggleStatus(listing.id, listing.isActive),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: listing.isActive
-                        ? AppColors.success.withOpacity(0.12)
-                        : AppColors.warning.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: listing.isActive
-                          ? AppColors.success.withOpacity(0.4)
-                          : AppColors.warning.withOpacity(0.4),
-                    ),
-                  ),
-                  child: Text(
-                    listing.isActive ? 'Active' : 'Paused',
-                    style: TextStyle(
-                      color: listing.isActive ? AppColors.success : AppColors.warning,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${listing.company} √Ç¬∑ ${listing.location} √Ç¬∑ ${listing.type}',
-            style: AppTextStyles.bodySmall.copyWith(
-              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(listing.stipend,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.success, fontWeight: FontWeight.w600,
-              )),
-          if (listing.skills.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6, runSpacing: 6,
-              children: listing.skills.take(4).map((s) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(s,
-                    style: AppTextStyles.labelSmall.copyWith(color: AppColors.primary)),
-              )).toList(),
-            ),
-          ],
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _showEditSheet(context),
-                  icon: const Icon(Iconsax.edit, size: 14),
-                  label: const Text('Edit'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: BorderSide(color: AppColors.primary.withOpacity(0.4)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _confirmDelete(context),
-                  icon: const Icon(Iconsax.trash, size: 14),
-                  label: const Text('Delete'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.error,
-                    side: BorderSide(color: AppColors.error.withOpacity(0.4)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// √¢‚Äù‚Ç¨√¢‚Äù‚Ç¨ Edit Internship Sheet √¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨√¢‚Äù‚Ç¨
-
-class _EditInternshipSheet extends StatefulWidget {
-  final InternshipModel listing;
-  final EmployerViewModel vm;
-
-  const _EditInternshipSheet({required this.listing, required this.vm});
-
-  @override
-  State<_EditInternshipSheet> createState() => _EditInternshipSheetState();
-}
-
-class _EditInternshipSheetState extends State<_EditInternshipSheet> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _titleC;
-  late final TextEditingController _companyC;
-  late final TextEditingController _locationC;
-  late final TextEditingController _durationC;
-  late final TextEditingController _stipendC;
-  late final TextEditingController _descriptionC;
-  late final TextEditingController _requirementsC;
-  late final TextEditingController _skillC;
-  late String _type;
-  late List<String> _skills;
-
-  @override
-  void initState() {
-    super.initState();
-    final l = widget.listing;
-    _titleC        = TextEditingController(text: l.title);
-    _companyC      = TextEditingController(text: l.company);
-    _locationC     = TextEditingController(text: l.location);
-    _durationC     = TextEditingController(text: l.duration);
-    _stipendC      = TextEditingController(text: l.stipend);
-    _descriptionC  = TextEditingController(text: l.description);
-    _requirementsC = TextEditingController(text: l.requirements);
-    _skillC        = TextEditingController();
-    _type          = l.type;
-    _skills        = List.from(l.skills);
-  }
-
-  @override
-  void dispose() {
-    for (final c in [_titleC, _companyC, _locationC, _durationC,
-      _stipendC, _descriptionC, _requirementsC, _skillC]) {
-      c.dispose();
-    }
-    super.dispose();
-  }
-
-  void _addSkill() {
-    final s = _skillC.text.trim();
-    if (s.isEmpty || _skills.contains(s)) return;
-    setState(() { _skills.add(s); _skillC.clear(); });
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    final success = await widget.vm.updateInternship(
-      id: widget.listing.id,
-      title: _titleC.text.trim(),
-      company: _companyC.text.trim(),
-      location: _locationC.text.trim(),
-      type: _type,
-      duration: _durationC.text.trim(),
-      stipend: _stipendC.text.trim(),
-      description: _descriptionC.text.trim(),
-      requirements: _requirementsC.text.trim(),
-      skills: List.from(_skills),
-      isActive: widget.listing.isActive,
-      postedBy: widget.listing.postedBy,
-      employerName: widget.listing.employerName,
-      postedAt: widget.listing.postedAt,
-    );
-    if (!mounted) return;
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(success ? 'Internship updated!' : widget.vm.updateError ?? 'Something went wrong'),
-      backgroundColor: success ? AppColors.success : AppColors.error,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.all(16),
-    ));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.92,
-      maxChildSize: 0.97,
-      minChildSize: 0.6,
-      builder: (_, scrollC) => Container(
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkBg : AppColors.lightBg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Text('Edit Internship',
-                      style: AppTextStyles.headlineMedium.copyWith(fontWeight: FontWeight.w800)),
-                  const Spacer(),
-                  IconButton(icon: const Icon(Icons.close_rounded),
-                      onPressed: () => Navigator.pop(context)),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  controller: scrollC,
-                  padding: const EdgeInsets.all(20),
-                  children: [
-                    _field(_titleC, 'Job Title', Iconsax.briefcase),
-                    _field(_companyC, 'Company Name', Iconsax.building),
-                    _field(_locationC, 'Location', Iconsax.location),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Work Type', style: AppTextStyles.labelMedium),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: ['Remote', 'On-site', 'Hybrid'].map((t) =>
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: ChoiceChip(
-                                    label: Text(t),
-                                    selected: _type == t,
-                                    onSelected: (_) => setState(() => _type = t),
-                                    selectedColor: AppColors.primary.withOpacity(0.15),
-                                    labelStyle: AppTextStyles.labelSmall.copyWith(
-                                      color: _type == t ? AppColors.primary : null,
-                                    ),
-                                    checkmarkColor: AppColors.primary,
-                                  ),
-                                ),
-                            ).toList(),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Row(children: [
-                      Expanded(child: _field(_durationC, 'Duration', Iconsax.clock)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _field(_stipendC, 'Stipend', Iconsax.money)),
-                    ]),
-                    _field(_descriptionC, 'Description', Iconsax.document, maxLines: 4),
-                    _field(_requirementsC, 'Requirements', Iconsax.tick_circle, maxLines: 3),
-                    Text('Required Skills', style: AppTextStyles.labelMedium),
-                    const SizedBox(height: 8),
-                    Row(children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _skillC,
-                          decoration: InputDecoration(
-                            hintText: 'e.g. Flutter',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          onFieldSubmitted: (_) => _addSkill(),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      IconButton.filled(
-                        onPressed: _addSkill,
-                        icon: const Icon(Icons.add_rounded),
-                        style: IconButton.styleFrom(backgroundColor: AppColors.primary),
-                      ),
-                    ]),
-                    if (_skills.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8, runSpacing: 8,
-                        children: _skills.map((s) => Chip(
-                          label: Text(s, style: AppTextStyles.labelSmall.copyWith(color: AppColors.primary)),
-                          backgroundColor: AppColors.primary.withOpacity(0.08),
-                          deleteIcon: const Icon(Icons.close_rounded, size: 14, color: AppColors.primary),
-                          onDeleted: () => setState(() => _skills.remove(s)),
-                        )).toList(),
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    Consumer<EmployerViewModel>(
-                      builder: (_, vm, __) => SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: ElevatedButton(
-                          onPressed: vm.isUpdating ? null : _submit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            elevation: 0,
-                          ),
-                          child: vm.isUpdating
-                              ? const SizedBox(width: 22, height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                              : Text('Update Internship',
-                              style: AppTextStyles.button.copyWith(color: Colors.white)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _field(TextEditingController c, String label, IconData icon, {int maxLines = 1}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextFormField(
-        controller: c,
-        maxLines: maxLines,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: maxLines == 1 ? Icon(icon, size: 20) : null,
-          alignLabelWithHint: maxLines > 1,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-        validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-      ),
-    );
-  }
-}
-
-
-===== employer_applicants_tab.dart =====
-import 'package:flutter/material.dart';
-import 'package:iconsax_flutter/iconsax_flutter.dart';
-import 'package:provider/provider.dart';
-
-import '../../models/application_model.dart';
-import '../../themes/app_colors.dart';
-import '../../themes/app_textstyles.dart';
-import '../../viewmodels/auth_viewmodel.dart';
-import '../../viewmodels/employer_viewmodel.dart';
-import '../widgets/applicant_card.dart';
-
-class EmployerApplicantsTab extends StatelessWidget {
-  const EmployerApplicantsTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final vm = context.watch<EmployerViewModel>();
-    final authVM = context.watch<AuthViewModel>();
-    final user = authVM.currentUser;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return SafeArea(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Applicants',
-                    style: AppTextStyles.headlineMedium
-                        .copyWith(fontWeight: FontWeight.w800)),
-                const SizedBox(height: 4),
-                Text(
-                  'Review and manage candidates',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: isDark
-                        ? AppColors.darkTextSecondary
-                        : AppColors.lightTextSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: user == null
-                ? const Center(child: Text('Not logged in'))
-                : StreamBuilder<List<ApplicationModel>>(
-              stream: vm.getAllMyApplicants(user.uid),
-              builder: (context, snap) {
-                if (snap.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                      child: CircularProgressIndicator());
-                }
-                final apps = snap.data ?? [];
-
-                if (apps.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Iconsax.people,
-                            size: 56,
-                            color: isDark
-                                ? AppColors.darkTextTertiary
-                                : AppColors.lightTextTertiary),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No applicants yet',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: isDark
-                                ? AppColors.darkTextSecondary
-                                : AppColors.lightTextSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                // Group by internship title
-                final grouped = <String, List<ApplicationModel>>{};
-                for (final app in apps) {
-                  grouped
-                      .putIfAbsent(app.internshipTitle, () => [])
-                      .add(app);
-                }
-
-                return ListView(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 20),
-                  children: grouped.entries.map((entry) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Group header
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 12),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(entry.key,
-                                    style:
-                                    AppTextStyles.titleMedium),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary
-                                      .withOpacity(0.1),
-                                  borderRadius:
-                                  BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  '${entry.value.length} applicant${entry.value.length != 1 ? 's' : ''}',
-                                  style: AppTextStyles.labelSmall
-                                      .copyWith(
-                                      color: AppColors.primary),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // √¢≈ì‚Ä¶ ApplicantCard with compact: false
-                        // shows full card with action buttons
-                        ...entry.value.map(
-                              (app) => ApplicantCard(
-                            application: app,
-                            vm: vm,
-                            compact: false,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                    );
-                  }).toList(),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-
-===== employer_post_tab.dart =====
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../models/internship_model.dart';
-import '../../themes/app_colors.dart';
-import '../../themes/app_textstyles.dart';
-import '../../viewmodels/auth_viewmodel.dart';
-import '../../viewmodels/employer_viewmodel.dart';
-
-class EmployerPostTab extends StatefulWidget {
-  final InternshipModel? editing;
-  const EmployerPostTab({super.key, this.editing});
-
-  @override
-  State<EmployerPostTab> createState() => _EmployerPostTabState();
-}
-
-class _EmployerPostTabState extends State<EmployerPostTab> {
-  final _formKey = GlobalKey<FormState>();
-
-  final _titleController = TextEditingController();
-  final _companyController = TextEditingController();
-  final _locationController = TextEditingController();
-  final _durationController = TextEditingController();
-  final _stipendController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _requirementsController = TextEditingController();
-  final _skillInputController = TextEditingController();
-
-  String _selectedType = 'Remote';
-  final List<String> _skills = [];
-
-  @override
-  void initState() {
-    super.initState();
-    final e = widget.editing;
-    if (e != null) {
-      _titleController.text = e.title;
-      _companyController.text = e.company;
-      _locationController.text = e.location;
-      _durationController.text = e.duration;
-      _stipendController.text = e.stipend;
-      _descriptionController.text = e.description;
-      _requirementsController.text = e.requirements;
-      _selectedType = e.type;
-      _skills.addAll(e.skills);
-    }
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _companyController.dispose();
-    _locationController.dispose();
-    _durationController.dispose();
-    _stipendController.dispose();
-    _descriptionController.dispose();
-    _requirementsController.dispose();
-    _skillInputController.dispose();
-    super.dispose();
-  }
-
-  void _addSkill() {
-    final skill = _skillInputController.text.trim();
-    if (skill.isEmpty || _skills.contains(skill)) return;
-    setState(() {
-      _skills.add(skill);
-      _skillInputController.clear();
-    });
-  }
-
-  void _removeSkill(String skill) => setState(() => _skills.remove(skill));
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_skills.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add at least one required skill')),
-      );
-      return;
-    }
-
-    final employerVM = context.read<EmployerViewModel>();
-    final authVM = context.read<AuthViewModel>();
-    final user = authVM.currentUser;
-    if (user == null) return;
-
-    final success = widget.editing == null
-        ? await employerVM.postInternship(
-      title: _titleController.text,
-      company: _companyController.text,
-      location: _locationController.text,
-      type: _selectedType,
-      duration: _durationController.text,
-      stipend: _stipendController.text,
-      description: _descriptionController.text,
-      requirements: _requirementsController.text,
-      skills: List.from(_skills),
-      postedBy: user.uid,
-      employerName: user.displayName ?? '',
-    )
-        : await employerVM.updateInternship(
-      id: widget.editing!.id,
-      title: _titleController.text,
-      company: _companyController.text,
-      location: _locationController.text,
-      type: _selectedType,
-      duration: _durationController.text,
-      stipend: _stipendController.text,
-      description: _descriptionController.text,
-      requirements: _requirementsController.text,
-      skills: List.from(_skills),
-      isActive: widget.editing!.isActive,
-      postedBy: widget.editing!.postedBy,
-      employerName: widget.editing!.employerName,
-      postedAt: widget.editing!.postedAt,
-    );
-
-    if (!mounted) return;
-
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(widget.editing == null
-              ? 'Internship posted successfully!'
-              : 'Internship updated successfully!'),
-          backgroundColor: AppColors.success,
-        ),
-      );
-      Navigator.pop(context);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(employerVM.postError ?? employerVM.updateError ?? 'Something went wrong'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final employerVM = context.watch<EmployerViewModel>();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return SafeArea(
-      child: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Text(
-              widget.editing == null ? 'Post Internship' : 'Edit Internship',
-              style: AppTextStyles.headlineMedium,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Fill in the details to attract the right candidates',
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: isDark
-                    ? AppColors.darkTextSecondary
-                    : AppColors.lightTextSecondary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            _SectionLabel(label: 'Basic Information'),
-            const SizedBox(height: 12),
-            _Field(controller: _titleController, label: 'Job Title', hint: 'e.g. Flutter Developer Intern', validator: _required),
-            const SizedBox(height: 14),
-            _Field(controller: _companyController, label: 'Company Name', hint: 'e.g. Tech Solutions Pvt Ltd', validator: _required),
-            const SizedBox(height: 14),
-            _Field(controller: _locationController, label: 'Location', hint: 'e.g. Bangalore / Work From Home', validator: _required),
-            const SizedBox(height: 14),
-            Text('Work Type', style: AppTextStyles.labelMedium),
-            const SizedBox(height: 8),
-            Row(
-              children: ['Remote', 'On-site', 'Hybrid'].map((type) {
-                final selected = _selectedType == type;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 10),
-                  child: ChoiceChip(
-                    label: Text(type),
-                    selected: selected,
-                    onSelected: (_) => setState(() => _selectedType = type),
-                    selectedColor: AppColors.primary.withOpacity(0.15),
-                    labelStyle: AppTextStyles.labelSmall.copyWith(
-                      color: selected ? AppColors.primary : null,
-                    ),
-                    checkmarkColor: AppColors.primary,
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: _Field(
-                    controller: _durationController,
-                    label: 'Duration',
-                    hint: 'e.g. 3 months',
-                    validator: _required,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: _Field(
-                    controller: _stipendController,
-                    label: 'Stipend',
-                    hint: 'e.g. √¢‚Äö¬π5000/month',
-                    validator: _required,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            _SectionLabel(label: 'Details'),
-            const SizedBox(height: 12),
-            _Field(
-              controller: _descriptionController,
-              label: 'Job Description',
-              hint: 'Describe the role and responsibilities...',
-              maxLines: 4,
-              validator: _required,
-            ),
-            const SizedBox(height: 14),
-            _Field(
-              controller: _requirementsController,
-              label: 'Requirements',
-              hint: 'What qualifications do you expect?',
-              maxLines: 3,
-              validator: _required,
-            ),
-            const SizedBox(height: 24),
-            _SectionLabel(label: 'Required Skills'),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _skillInputController,
-                    decoration: InputDecoration(
-                      labelText: 'Add a skill',
-                      hintText: 'e.g. Flutter, Firebase',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onFieldSubmitted: (_) => _addSkill(),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: _addSkill,
-                  child: const Icon(Icons.add_rounded),
-                ),
-              ],
-            ),
-            if (_skills.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _skills
-                    .map(
-                      (skill) => Chip(
-                    label: Text(skill, style: AppTextStyles.labelSmall.copyWith(color: AppColors.primary)),
-                    backgroundColor: AppColors.primary.withOpacity(0.08),
-                    deleteIcon: const Icon(Icons.close_rounded, size: 14, color: AppColors.primary),
-                    onDeleted: () => _removeSkill(skill),
-                  ),
-                )
-                    .toList(),
-              ),
-            ],
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: ElevatedButton(
-                onPressed: employerVM.isPosting || employerVM.isUpdating ? null : _submit,
-                child: (widget.editing == null
-                    ? employerVM.isPosting
-                    : employerVM.isUpdating)
-                    ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                )
-                    : Text(widget.editing == null ? 'Post Internship' : 'Update Internship'),
-              ),
-            ),
-            const SizedBox(height: 40),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String? _required(String? value) {
-    if (value == null || value.trim().isEmpty) return 'This field is required';
-    return null;
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  final String label;
-  const _SectionLabel({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 16,
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(label, style: AppTextStyles.titleMedium),
-      ],
-    );
-  }
-}
-
-class _Field extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final String hint;
-  final int maxLines;
-  final String? Function(String?)? validator;
-
-  const _Field({
-    required this.controller,
-    required this.label,
-    required this.hint,
-    this.maxLines = 1,
-    this.validator,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        alignLabelWithHint: maxLines > 1,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-    );
-  }
-}
-
-
-===== employer_profile_tab.dart =====
-import 'package:flutter/material.dart';
-import 'package:iconsax_flutter/iconsax_flutter.dart';
-import 'package:provider/provider.dart';
-
-import '../../models/internship_model.dart';
-import '../../routes/app_routes.dart';
-import '../../themes/app_colors.dart';
-import '../../themes/app_textstyles.dart';
-import '../../viewmodels/auth_viewmodel.dart';
-import '../../viewmodels/employer_viewmodel.dart';
-
-class EmployerProfileTab extends StatelessWidget {
-  const EmployerProfileTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final authVM = context.watch<AuthViewModel>();
-    final employerVM = context.watch<EmployerViewModel>();
-    final user = authVM.currentUser;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const SizedBox(height: 12),
-
-          // √¢‚Äù‚Ç¨√¢‚Äù‚Ç¨ Avatar + name √¢‚Äù‚Ç¨√¢‚Äù‚Ç¨
-          Center(
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 46,
-                  backgroundColor: AppColors.primary.withOpacity(0.12),
-                  backgroundImage: user?.photoURL != null
-                      ? NetworkImage(user!.photoURL!)
-                      : null,
-                  child: user?.photoURL == null
-                      ? Text(
-                    (user?.displayName ?? 'E')[0].toUpperCase(),
-                    style: AppTextStyles.headlineLarge
-                        .copyWith(color: AppColors.primary),
-                  )
-                      : null,
-                ),
-                const SizedBox(height: 14),
-                Text(user?.displayName ?? 'Employer',
-                    style: AppTextStyles.headlineMedium.copyWith(fontWeight: FontWeight.w800)),
-                const SizedBox(height: 4),
-                Text(user?.email ?? '',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                    )),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.10),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-                  ),
-                  child: Text('Employer',
-                      style: AppTextStyles.labelSmall.copyWith(
-                        color: AppColors.primary, fontWeight: FontWeight.w700,
-                      )),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 28),
-
-          // √¢‚Äù‚Ç¨√¢‚Äù‚Ç¨ Stats √¢‚Ç¨‚Äù live from Firestore √¢‚Äù‚Ç¨√¢‚Äù‚Ç¨
-          if (user != null)
-            StreamBuilder<List<InternshipModel>>(
-              stream: employerVM.getMyListings(user.uid),
-              builder: (context, snap) {
-                final listings = snap.data ?? [];
-                final active = employerVM.getActiveListingCount(listings);
-                return Row(
-                  children: [
-                    _StatTile(label: 'Total Posted', value: '${listings.length}'),
-                    const SizedBox(width: 12),
-                    _StatTile(label: 'Active', value: '$active'),
-                    const SizedBox(width: 12),
-                    _StatTile(label: 'Paused', value: '${listings.length - active}'),
-                  ],
-                );
-              },
-            ),
-
-          const SizedBox(height: 28),
-
-          // √¢‚Äù‚Ç¨√¢‚Äù‚Ç¨ Settings tiles √¢‚Äù‚Ç¨√¢‚Äù‚Ç¨
-          _ProfileTile(
-            icon: Iconsax.building,
-            label: 'Company Profile',
-            onTap: () {},
-          ),
-          _ProfileTile(
-            icon: Iconsax.notification,
-            label: 'Notifications',
-            onTap: () {},
-          ),
-          _ProfileTile(
-            icon: Iconsax.info_circle,
-            label: 'Help & Support',
-            onTap: () {},
-          ),
-
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Divider(),
-          ),
-
-          _ProfileTile(
-            icon: Iconsax.logout,
-            label: 'Sign Out',
-            color: AppColors.error,
-            onTap: () async {
-              await authVM.logout();
-              if (!context.mounted) return;
-              Navigator.pushNamedAndRemoveUntil(
-                context, AppRoutes.login, (r) => false,
-              );
-            },
-          ),
-
-          const SizedBox(height: 20),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _StatTile({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-          ),
-        ),
-        child: Column(
-          children: [
-            Text(value,
-                style: AppTextStyles.headlineMedium.copyWith(color: AppColors.primary)),
-            const SizedBox(height: 4),
-            Text(label,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                )),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfileTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final Color? color;
-
-  const _ProfileTile({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final c = color ?? (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-        ),
-      ),
-      child: ListTile(
-        leading: Icon(icon, color: c, size: 20),
-        title: Text(label,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: c, fontWeight: FontWeight.w600,
-            )),
-        trailing: Icon(Icons.chevron_right_rounded, color: c.withOpacity(0.4), size: 20),
-        onTap: onTap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-    );
-  }
-}
-
- 
- = = = = =   a p p l i c a n t _ c a r d . d a r t   = = = = = 
- i m p o r t   ' p a c k a g e : f l u t t e r / m a t e r i a l . d a r t ' ;  
- i m p o r t   ' . . / . . / m o d e l s / a p p l i c a t i o n _ m o d e l . d a r t ' ;  
- i m p o r t   ' . . / . . / t h e m e s / a p p _ c o l o r s . d a r t ' ;  
- i m p o r t   ' . . / . . / t h e m e s / a p p _ t e x t s t y l e s . d a r t ' ;  
- i m p o r t   ' . . / . . / v i e w m o d e l s / e m p l o y e r _ v i e w m o d e l . d a r t ' ;  
-  
- / / /   R e u s a b l e   a p p l i c a n t   c a r d   f o r   a l l   e m p l o y e r   s c r e e n s .  
- / / /  
- / / /   [ c o m p a c t ]   =   t r u e     ‚      s l i m   r o w   t i l e   u s e d   i n   t h e   d a s h b o a r d ' s   " R e c e n t   A p p l i c a t i o n s "  
- / / /   [ c o m p a c t ]   =   f a l s e   ‚      f u l l   c a r d   w i t h   a c t i o n   b u t t o n s   u s e d   i n   t h e   A p p l i c a n t s   t a b  
- c l a s s   A p p l i c a n t C a r d   e x t e n d s   S t a t e l e s s W i d g e t   {  
-     f i n a l   A p p l i c a t i o n M o d e l   a p p l i c a t i o n ;  
-     f i n a l   E m p l o y e r V i e w M o d e l   v m ;  
-     f i n a l   b o o l   c o m p a c t ;  
-  
-     c o n s t   A p p l i c a n t C a r d ( {  
-         s u p e r . k e y ,  
-         r e q u i r e d   t h i s . a p p l i c a t i o n ,  
-         r e q u i r e d   t h i s . v m ,  
-         t h i s . c o m p a c t   =   f a l s e ,  
-     } ) ;  
-  
-     C o l o r   _ s t a t u s C o l o r ( S t r i n g   s t a t u s )   {  
-         s w i t c h   ( s t a t u s . t o L o w e r C a s e ( ) )   {  
-             c a s e   ' a c c e p t e d ' :         r e t u r n   A p p C o l o r s . s u c c e s s ;  
-             c a s e   ' r e j e c t e d ' :         r e t u r n   A p p C o l o r s . e r r o r ;  
-             c a s e   ' s h o r t l i s t e d ' :   r e t u r n   A p p C o l o r s . w a r n i n g ;  
-             c a s e   ' r e v i e w e d ' :         r e t u r n   A p p C o l o r s . s e c o n d a r y ;  
-             d e f a u l t :                         r e t u r n   A p p C o l o r s . l i g h t T e x t T e r t i a r y ;  
-         }  
-     }  
-  
-     @ o v e r r i d e  
-     W i d g e t   b u i l d ( B u i l d C o n t e x t   c o n t e x t )   {  
-         f i n a l   i s D a r k   =   T h e m e . o f ( c o n t e x t ) . b r i g h t n e s s   = =   B r i g h t n e s s . d a r k ;  
-         f i n a l   c o l o r   =   _ s t a t u s C o l o r ( a p p l i c a t i o n . s t a t u s ) ;  
-         f i n a l   i s P e n d i n g   =   a p p l i c a t i o n . s t a t u s . t o L o w e r C a s e ( )   = =   ' p e n d i n g ' ;  
-  
-         r e t u r n   C o n t a i n e r (  
-             m a r g i n :   c o n s t   E d g e I n s e t s . o n l y ( b o t t o m :   1 0 ) ,  
-             p a d d i n g :   E d g e I n s e t s . a l l ( c o m p a c t   ?   1 2   :   1 4 ) ,  
-             d e c o r a t i o n :   B o x D e c o r a t i o n (  
-                 c o l o r :   i s D a r k   ?   A p p C o l o r s . d a r k S u r f a c e   :   C o l o r s . w h i t e ,  
-                 b o r d e r R a d i u s :   B o r d e r R a d i u s . c i r c u l a r ( 1 4 ) ,  
-                 b o r d e r :   B o r d e r . a l l (  
-                     c o l o r :   i s D a r k   ?   A p p C o l o r s . d a r k B o r d e r   :   A p p C o l o r s . l i g h t B o r d e r ,  
-                 ) ,  
-                 b o x S h a d o w :   [  
-                     B o x S h a d o w (  
-                         c o l o r :   C o l o r s . b l a c k . w i t h O p a c i t y ( 0 . 0 4 ) ,  
-                         b l u r R a d i u s :   8 ,  
-                         o f f s e t :   c o n s t   O f f s e t ( 0 ,   2 ) ,  
-                     ) ,  
-                 ] ,  
-             ) ,  
-             c h i l d :   C o l u m n (  
-                 c h i l d r e n :   [  
-                     R o w (  
-                         c h i l d r e n :   [  
-                             / /   ‚  ¨ ‚  ¨   A v a t a r   ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨  
-                             C i r c l e A v a t a r (  
-                                 r a d i u s :   c o m p a c t   ?   1 8   :   2 2 ,  
-                                 b a c k g r o u n d C o l o r :   A p p C o l o r s . p r i m a r y . w i t h O p a c i t y ( 0 . 1 2 ) ,  
-                                 c h i l d :   T e x t (  
-                                     a p p l i c a t i o n . a p p l i c a n t N a m e . i s N o t E m p t y  
-                                             ?   a p p l i c a t i o n . a p p l i c a n t N a m e [ 0 ] . t o U p p e r C a s e ( )  
-                                             :   ' ? ' ,  
-                                     s t y l e :   T e x t S t y l e (  
-                                         c o l o r :   A p p C o l o r s . p r i m a r y ,  
-                                         f o n t W e i g h t :   F o n t W e i g h t . w 8 0 0 ,  
-                                         f o n t S i z e :   c o m p a c t   ?   1 4   :   1 6 ,  
-                                     ) ,  
-                                 ) ,  
-                             ) ,  
-                             c o n s t   S i z e d B o x ( w i d t h :   1 2 ) ,  
-  
-                             / /   ‚  ¨ ‚  ¨   N a m e   +   s u b t i t l e   ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨  
-                             E x p a n d e d (  
-                                 c h i l d :   C o l u m n (  
-                                     c r o s s A x i s A l i g n m e n t :   C r o s s A x i s A l i g n m e n t . s t a r t ,  
-                                     c h i l d r e n :   [  
-                                         T e x t (  
-                                             a p p l i c a t i o n . a p p l i c a n t N a m e ,  
-                                             s t y l e :   A p p T e x t S t y l e s . l a b e l L a r g e . c o p y W i t h (  
-                                                 f o n t W e i g h t :   F o n t W e i g h t . w 7 0 0 ,  
-                                             ) ,  
-                                             m a x L i n e s :   1 ,  
-                                             o v e r f l o w :   T e x t O v e r f l o w . e l l i p s i s ,  
-                                         ) ,  
-                                         c o n s t   S i z e d B o x ( h e i g h t :   2 ) ,  
-                                         T e x t (  
-                                             / /   C o m p a c t   m o d e :   s h o w   w h i c h   i n t e r n s h i p   t h e y   a p p l i e d   t o  
-                                             / /   F u l l   m o d e :   s h o w   t h e i r   e m a i l  
-                                             c o m p a c t  
-                                                     ?   a p p l i c a t i o n . i n t e r n s h i p T i t l e  
-                                                     :   a p p l i c a t i o n . a p p l i c a n t E m a i l ,  
-                                             s t y l e :   A p p T e x t S t y l e s . b o d y S m a l l . c o p y W i t h (  
-                                                 c o l o r :   i s D a r k  
-                                                         ?   A p p C o l o r s . d a r k T e x t S e c o n d a r y  
-                                                         :   A p p C o l o r s . l i g h t T e x t S e c o n d a r y ,  
-                                             ) ,  
-                                             m a x L i n e s :   1 ,  
-                                             o v e r f l o w :   T e x t O v e r f l o w . e l l i p s i s ,  
-                                         ) ,  
-                                     ] ,  
-                                 ) ,  
-                             ) ,  
-  
-                             / /   ‚  ¨ ‚  ¨   S t a t u s   b a d g e   ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨  
-                             C o n t a i n e r (  
-                                 p a d d i n g :   c o n s t   E d g e I n s e t s . s y m m e t r i c (  
-                                         h o r i z o n t a l :   1 0 ,   v e r t i c a l :   5 ) ,  
-                                 d e c o r a t i o n :   B o x D e c o r a t i o n (  
-                                     c o l o r :   c o l o r . w i t h O p a c i t y ( 0 . 1 2 ) ,  
-                                     b o r d e r R a d i u s :   B o r d e r R a d i u s . c i r c u l a r ( 8 ) ,  
-                                     b o r d e r :   B o r d e r . a l l ( c o l o r :   c o l o r . w i t h O p a c i t y ( 0 . 4 ) ) ,  
-                                 ) ,  
-                                 c h i l d :   T e x t (  
-                                     v m . g e t S t a t u s L a b e l ( a p p l i c a t i o n . s t a t u s ) ,  
-                                     s t y l e :   A p p T e x t S t y l e s . l a b e l S m a l l . c o p y W i t h ( c o l o r :   c o l o r ) ,  
-                                 ) ,  
-                             ) ,  
-                         ] ,  
-                     ) ,  
-  
-                     / /   ‚  ¨ ‚  ¨   A c t i o n   b u t t o n s   ‚ ¨    o n l y   i n   f u l l   m o d e   a n d   o n l y   f o r   p e n d i n g   ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨  
-                     i f   ( ! c o m p a c t   & &   i s P e n d i n g )   . . . [  
-                         c o n s t   S i z e d B o x ( h e i g h t :   1 2 ) ,  
-                         R o w (  
-                             c h i l d r e n :   [  
-                                 _ A c t i o n B t n (  
-                                     l a b e l :   ' A c c e p t ' ,  
-                                     c o l o r :   A p p C o l o r s . s u c c e s s ,  
-                                     o n T a p :   ( )   = >   v m . a c c e p t A p p l i c a n t ( a p p l i c a t i o n . i d ) ,  
-                                 ) ,  
-                                 c o n s t   S i z e d B o x ( w i d t h :   8 ) ,  
-                                 _ A c t i o n B t n (  
-                                     l a b e l :   ' S h o r t l i s t ' ,  
-                                     c o l o r :   A p p C o l o r s . w a r n i n g ,  
-                                     o n T a p :   ( )   = >   v m . s h o r t l i s t A p p l i c a n t ( a p p l i c a t i o n . i d ) ,  
-                                 ) ,  
-                                 c o n s t   S i z e d B o x ( w i d t h :   8 ) ,  
-                                 _ A c t i o n B t n (  
-                                     l a b e l :   ' R e j e c t ' ,  
-                                     c o l o r :   A p p C o l o r s . e r r o r ,  
-                                     o n T a p :   ( )   = >   v m . r e j e c t A p p l i c a n t ( a p p l i c a t i o n . i d ) ,  
-                                 ) ,  
-                             ] ,  
-                         ) ,  
-                     ] ,  
-                 ] ,  
-             ) ,  
-         ) ;  
-     }  
- }  
-  
- c l a s s   _ A c t i o n B t n   e x t e n d s   S t a t e l e s s W i d g e t   {  
-     f i n a l   S t r i n g   l a b e l ;  
-     f i n a l   C o l o r   c o l o r ;  
-     f i n a l   V o i d C a l l b a c k   o n T a p ;  
-  
-     c o n s t   _ A c t i o n B t n ( {  
-         r e q u i r e d   t h i s . l a b e l ,  
-         r e q u i r e d   t h i s . c o l o r ,  
-         r e q u i r e d   t h i s . o n T a p ,  
-     } ) ;  
-  
-     @ o v e r r i d e  
-     W i d g e t   b u i l d ( B u i l d C o n t e x t   c o n t e x t )   {  
-         r e t u r n   E x p a n d e d (  
-             c h i l d :   O u t l i n e d B u t t o n (  
-                 o n P r e s s e d :   o n T a p ,  
-                 s t y l e :   O u t l i n e d B u t t o n . s t y l e F r o m (  
-                     f o r e g r o u n d C o l o r :   c o l o r ,  
-                     s i d e :   B o r d e r S i d e ( c o l o r :   c o l o r . w i t h O p a c i t y ( 0 . 5 ) ) ,  
-                     s h a p e :   R o u n d e d R e c t a n g l e B o r d e r (  
-                             b o r d e r R a d i u s :   B o r d e r R a d i u s . c i r c u l a r ( 1 0 ) ) ,  
-                     p a d d i n g :   c o n s t   E d g e I n s e t s . s y m m e t r i c ( v e r t i c a l :   8 ) ,  
-                 ) ,  
-                 c h i l d :   T e x t (  
-                     l a b e l ,  
-                     s t y l e :   c o n s t   T e x t S t y l e (  
-                             f o n t S i z e :   1 2 ,   f o n t W e i g h t :   F o n t W e i g h t . w 7 0 0 ) ,  
-                 ) ,  
-             ) ,  
-         ) ;  
-     }  
- }  
- 
- 
- = = = = =   a u t h _ g a t e . d a r t   = = = = = 
- i m p o r t   ' p a c k a g e : b e _ p r a c t i c a l 1 8 / v i e w s / s c r e e n s / i n t e r n _ s c r e e n . d a r t ' ;  
- i m p o r t   ' p a c k a g e : f l u t t e r / m a t e r i a l . d a r t ' ;  
- i m p o r t   ' p a c k a g e : f i r e b a s e _ a u t h / f i r e b a s e _ a u t h . d a r t ' ;  
- i m p o r t   ' . . / . . / r e p o s i t o r y / a u t h _ r e p o s i t o r y . d a r t ' ;  
-  
- i m p o r t   ' . . / s c r e e n s / e m p l o y e r _ h o m e _ s c r e e n . d a r t ' ;  
- i m p o r t   ' . . / s c r e e n s / l o g i n _ s c r e e n . d a r t ' ;  
-  
- c l a s s   A u t h G a t e   e x t e n d s   S t a t e l e s s W i d g e t   {  
-     c o n s t   A u t h G a t e ( { s u p e r . k e y } ) ;  
-  
-     @ o v e r r i d e  
-     W i d g e t   b u i l d ( B u i l d C o n t e x t   c o n t e x t )   {  
-         f i n a l   r e p o   =   A u t h R e p o s i t o r y ( ) ;  
-  
-         r e t u r n   S t r e a m B u i l d e r < U s e r ? > (  
-             s t r e a m :   r e p o . a u t h S t a t e C h a n g e s ,  
-             b u i l d e r :   ( c o n t e x t ,   a u t h S n a p s h o t )   {  
-                 i f   ( a u t h S n a p s h o t . c o n n e c t i o n S t a t e   = =   C o n n e c t i o n S t a t e . w a i t i n g )   {  
-                     r e t u r n   c o n s t   S c a f f o l d ( b o d y :   C e n t e r ( c h i l d :   C i r c u l a r P r o g r e s s I n d i c a t o r ( ) ) ) ;  
-                 }  
-                 f i n a l   u s e r   =   a u t h S n a p s h o t . d a t a ;  
-                 i f   ( u s e r   = =   n u l l )   r e t u r n   c o n s t   L o g i n S c r e e n ( ) ;  
-  
-                 r e t u r n   F u t u r e B u i l d e r < S t r i n g ? > (  
-                     f u t u r e :   r e p o . f e t c h R o l e W i t h R e t r y ( u s e r . u i d ) ,  
-                     b u i l d e r :   ( c o n t e x t ,   r o l e S n a p s h o t )   {  
-                         i f   ( r o l e S n a p s h o t . c o n n e c t i o n S t a t e   = =   C o n n e c t i o n S t a t e . w a i t i n g )   {  
-                             r e t u r n   c o n s t   S c a f f o l d ( b o d y :   C e n t e r ( c h i l d :   C i r c u l a r P r o g r e s s I n d i c a t o r ( ) ) ) ;  
-                         }  
-                         s w i t c h   ( r o l e S n a p s h o t . d a t a )   {  
-                             c a s e   ' i n t e r n S e e k e r ' :   r e t u r n   c o n s t   I n t e r n S c r e e n ( ) ;   / /   F I X E D  
-                             c a s e   ' e m p l o y e r ' :           r e t u r n   c o n s t   E m p l o y e r H o m e S c r e e n ( ) ;  
-                             d e f a u l t :                           r e t u r n   c o n s t   L o g i n S c r e e n ( ) ;  
-                         }  
-                     } ,  
-                 ) ;  
-             } ,  
-         ) ;  
-     }  
- }  
- 
- 
- = = = = =   i n t e r n s h i p _ c a r d . d a r t   = = = = = 
- i m p o r t   ' p a c k a g e : f l u t t e r / m a t e r i a l . d a r t ' ;  
- i m p o r t   ' . . / . . / m o d e l s / i n t e r n s h i p _ m o d e l . d a r t ' ;  
- i m p o r t   ' . . / . . / t h e m e s / a p p _ c o l o r s . d a r t ' ;  
- i m p o r t   ' . . / . . / t h e m e s / a p p _ t e x t s t y l e s . d a r t ' ;  
-  
- c l a s s   I n t e r n s h i p C a r d   e x t e n d s   S t a t e l e s s W i d g e t   {  
-     f i n a l   I n t e r n s h i p M o d e l   i n t e r n s h i p ;  
-     f i n a l   V o i d C a l l b a c k ?   o n A p p l y ;  
-     f i n a l   V o i d C a l l b a c k ?   o n T a p ;  
-     f i n a l   b o o l   i s A p p l i e d ;  
-     f i n a l   b o o l   i s A p p l y i n g ;  
-  
-     c o n s t   I n t e r n s h i p C a r d ( {  
-         s u p e r . k e y ,  
-         r e q u i r e d   t h i s . i n t e r n s h i p ,  
-         t h i s . o n A p p l y ,  
-         t h i s . o n T a p ,  
-         t h i s . i s A p p l i e d   =   f a l s e ,  
-         t h i s . i s A p p l y i n g   =   f a l s e ,  
-     } ) ;  
-  
-     @ o v e r r i d e  
-     W i d g e t   b u i l d ( B u i l d C o n t e x t   c o n t e x t )   {  
-         f i n a l   i s D a r k   =   T h e m e . o f ( c o n t e x t ) . b r i g h t n e s s   = =   B r i g h t n e s s . d a r k ;  
-  
-         r e t u r n   G e s t u r e D e t e c t o r (  
-             o n T a p :   o n T a p ,  
-             c h i l d :   C o n t a i n e r (  
-                 m a r g i n :   c o n s t   E d g e I n s e t s . o n l y ( b o t t o m :   1 4 ) ,  
-                 d e c o r a t i o n :   B o x D e c o r a t i o n (  
-                     c o l o r :   i s D a r k   ?   A p p C o l o r s . d a r k S u r f a c e   :   C o l o r s . w h i t e ,  
-                     b o r d e r R a d i u s :   B o r d e r R a d i u s . c i r c u l a r ( 2 0 ) ,  
-                     b o r d e r :   B o r d e r . a l l (  
-                         c o l o r :   i s D a r k  
-                                 ?   A p p C o l o r s . d a r k B o r d e r  
-                                 :   c o n s t   C o l o r ( 0 x F F E 8 E D F 5 ) ,  
-                         w i d t h :   1 . 2 ,  
-                     ) ,  
-                     b o x S h a d o w :   [  
-                         B o x S h a d o w (  
-                             c o l o r :   C o l o r s . b l a c k . w i t h O p a c i t y ( i s D a r k   ?   0 . 2 5   :   0 . 0 6 ) ,  
-                             b l u r R a d i u s :   1 6 ,  
-                             o f f s e t :   c o n s t   O f f s e t ( 0 ,   4 ) ,  
-                         ) ,  
-                     ] ,  
-                 ) ,  
-                 c h i l d :   P a d d i n g (  
-                     p a d d i n g :   c o n s t   E d g e I n s e t s . a l l ( 1 8 ) ,  
-                     c h i l d :   C o l u m n (  
-                         c r o s s A x i s A l i g n m e n t :   C r o s s A x i s A l i g n m e n t . s t a r t ,  
-                         c h i l d r e n :   [  
-                             / /   ‚  ¨ ‚  ¨   T o p   r o w :   a v a t a r   +   t i t l e   +   t y p e   b a d g e   ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨  
-                             R o w (  
-                                 c r o s s A x i s A l i g n m e n t :   C r o s s A x i s A l i g n m e n t . s t a r t ,  
-                                 c h i l d r e n :   [  
-                                     _ C o m p a n y A v a t a r ( n a m e :   i n t e r n s h i p . c o m p a n y ) ,  
-                                     c o n s t   S i z e d B o x ( w i d t h :   1 4 ) ,  
-                                     E x p a n d e d (  
-                                         c h i l d :   C o l u m n (  
-                                             c r o s s A x i s A l i g n m e n t :   C r o s s A x i s A l i g n m e n t . s t a r t ,  
-                                             c h i l d r e n :   [  
-                                                 T e x t (  
-                                                     i n t e r n s h i p . t i t l e ,  
-                                                     s t y l e :   A p p T e x t S t y l e s . t i t l e M e d i u m . c o p y W i t h (  
-                                                         f o n t S i z e :   1 5 ,  
-                                                         f o n t W e i g h t :   F o n t W e i g h t . w 7 0 0 ,  
-                                                         c o l o r :   i s D a r k  
-                                                                 ?   A p p C o l o r s . d a r k T e x t P r i m a r y  
-                                                                 :   A p p C o l o r s . l i g h t T e x t P r i m a r y ,  
-                                                     ) ,  
-                                                     m a x L i n e s :   2 ,  
-                                                     o v e r f l o w :   T e x t O v e r f l o w . e l l i p s i s ,  
-                                                 ) ,  
-                                                 c o n s t   S i z e d B o x ( h e i g h t :   3 ) ,  
-                                                 T e x t (  
-                                                     i n t e r n s h i p . c o m p a n y ,  
-                                                     s t y l e :   A p p T e x t S t y l e s . b o d y S m a l l . c o p y W i t h (  
-                                                         c o l o r :   A p p C o l o r s . p r i m a r y ,  
-                                                         f o n t W e i g h t :   F o n t W e i g h t . w 6 0 0 ,  
-                                                     ) ,  
-                                                 ) ,  
-                                             ] ,  
-                                         ) ,  
-                                     ) ,  
-                                     c o n s t   S i z e d B o x ( w i d t h :   8 ) ,  
-                                     _ T y p e B a d g e ( t y p e :   i n t e r n s h i p . t y p e ) ,  
-                                 ] ,  
-                             ) ,  
-  
-                             c o n s t   S i z e d B o x ( h e i g h t :   1 4 ) ,  
-                             _ D i v i d e r ( i s D a r k :   i s D a r k ) ,  
-                             c o n s t   S i z e d B o x ( h e i g h t :   1 2 ) ,  
-  
-                             / /   ‚  ¨ ‚  ¨   M e t a   r o w :   l o c a t i o n   ¬ ∑   d u r a t i o n   ¬ ∑   s t i p e n d   ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨  
-                             W r a p (  
-                                 s p a c i n g :   1 8 ,  
-                                 r u n S p a c i n g :   6 ,  
-                                 c h i l d r e n :   [  
-                                     _ M e t a C h i p (  
-                                         i c o n :   I c o n s . l o c a t i o n _ o n _ o u t l i n e d ,  
-                                         l a b e l :   i n t e r n s h i p . l o c a t i o n ,  
-                                         i s D a r k :   i s D a r k ,  
-                                     ) ,  
-                                     _ M e t a C h i p (  
-                                         i c o n :   I c o n s . s c h e d u l e _ r o u n d e d ,  
-                                         l a b e l :   i n t e r n s h i p . d u r a t i o n ,  
-                                         i s D a r k :   i s D a r k ,  
-                                     ) ,  
-                                     _ M e t a C h i p (  
-                                         i c o n :   I c o n s . p a y m e n t s _ o u t l i n e d ,  
-                                         l a b e l :   i n t e r n s h i p . s t i p e n d ,  
-                                         i s D a r k :   i s D a r k ,  
-                                         h i g h l i g h t :   t r u e ,  
-                                     ) ,  
-                                 ] ,  
-                             ) ,  
-  
-                             / /   ‚  ¨ ‚  ¨   S k i l l s   ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨  
-                             i f   ( i n t e r n s h i p . s k i l l s . i s N o t E m p t y )   . . . [  
-                                 c o n s t   S i z e d B o x ( h e i g h t :   1 2 ) ,  
-                                 W r a p (  
-                                     s p a c i n g :   6 ,  
-                                     r u n S p a c i n g :   6 ,  
-                                     c h i l d r e n :   i n t e r n s h i p . s k i l l s  
-                                             . t a k e ( 4 )  
-                                             . m a p ( ( s )   = >   _ S k i l l C h i p ( l a b e l :   s ) )  
-                                             . t o L i s t ( ) ,  
-                                 ) ,  
-                             ] ,  
-  
-                             c o n s t   S i z e d B o x ( h e i g h t :   1 4 ) ,  
-  
-                             / /   ‚  ¨ ‚  ¨   A p p l y   b u t t o n   ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨  
-                             S i z e d B o x (  
-                                 w i d t h :   d o u b l e . i n f i n i t y ,  
-                                 h e i g h t :   4 6 ,  
-                                 c h i l d :   A n i m a t e d S w i t c h e r (  
-                                     d u r a t i o n :   c o n s t   D u r a t i o n ( m i l l i s e c o n d s :   2 5 0 ) ,  
-                                     c h i l d :   i s A p p l i e d  
-                                             ?   _ A p p l i e d B a d g e ( k e y :   c o n s t   V a l u e K e y ( ' a p p l i e d ' ) )  
-                                             :   E l e v a t e d B u t t o n (  
-                                         k e y :   c o n s t   V a l u e K e y ( ' a p p l y ' ) ,  
-                                         o n P r e s s e d :   i s A p p l y i n g   ?   n u l l   :   o n A p p l y ,  
-                                         s t y l e :   E l e v a t e d B u t t o n . s t y l e F r o m (  
-                                             b a c k g r o u n d C o l o r :   A p p C o l o r s . p r i m a r y ,  
-                                             f o r e g r o u n d C o l o r :   C o l o r s . w h i t e ,  
-                                             d i s a b l e d B a c k g r o u n d C o l o r :  
-                                             A p p C o l o r s . p r i m a r y . w i t h O p a c i t y ( 0 . 6 ) ,  
-                                             e l e v a t i o n :   0 ,  
-                                             s h a p e :   R o u n d e d R e c t a n g l e B o r d e r (  
-                                                 b o r d e r R a d i u s :   B o r d e r R a d i u s . c i r c u l a r ( 1 2 ) ,  
-                                             ) ,  
-                                         ) ,  
-                                         c h i l d :   i s A p p l y i n g  
-                                                 ?   c o n s t   S i z e d B o x (  
-                                             w i d t h :   1 8 ,  
-                                             h e i g h t :   1 8 ,  
-                                             c h i l d :   C i r c u l a r P r o g r e s s I n d i c a t o r (  
-                                                 s t r o k e W i d t h :   2 ,  
-                                                 c o l o r :   C o l o r s . w h i t e ,  
-                                             ) ,  
-                                         )  
-                                                 :   T e x t (  
-                                             ' A p p l y   N o w ' ,  
-                                             s t y l e :   A p p T e x t S t y l e s . l a b e l L a r g e . c o p y W i t h (  
-                                                 c o l o r :   C o l o r s . w h i t e ,  
-                                                 f o n t W e i g h t :   F o n t W e i g h t . w 7 0 0 ,  
-                                             ) ,  
-                                         ) ,  
-                                     ) ,  
-                                 ) ,  
-                             ) ,  
-                         ] ,  
-                     ) ,  
-                 ) ,  
-             ) ,  
-         ) ;  
-     }  
- }  
-  
- / /   ‚  ¨ ‚  ¨   S u b - w i d g e t s   ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨ ‚  ¨  
-  
- c l a s s   _ C o m p a n y A v a t a r   e x t e n d s   S t a t e l e s s W i d g e t   {  
-     f i n a l   S t r i n g   n a m e ;  
-     c o n s t   _ C o m p a n y A v a t a r ( { r e q u i r e d   t h i s . n a m e } ) ;  
-  
-     / / /   P i c k   a   c o n s i s t e n t   a c c e n t   c o l o u r   f r o m   t h e   c o m p a n y   n a m e  
-     C o l o r   _ a v a t a r C o l o r ( )   {  
-         c o n s t   c o l o u r s   =   [  
-             C o l o r ( 0 x F F 4 F 4 6 E 5 ) ,  
-             C o l o r ( 0 x F F 0 E A 5 E 9 ) ,  
-             C o l o r ( 0 x F F 1 0 B 9 8 1 ) ,  
-             C o l o r ( 0 x F F F 5 9 E 0 B ) ,  
-             C o l o r ( 0 x F F E F 4 4 4 4 ) ,  
-             C o l o r ( 0 x F F 8 B 5 C F 6 ) ,  
-             C o l o r ( 0 x F F E C 4 8 9 9 ) ,  
-         ] ;  
-         r e t u r n   c o l o u r s [ n a m e . c o d e U n i t A t ( 0 )   %   c o l o u r s . l e n g t h ] ;  
-     }  
-  
-     @ o v e r r i d e  
-     W i d g e t   b u i l d ( B u i l d C o n t e x t   c o n t e x t )   {  
-         f i n a l   c o l o r   =   _ a v a t a r C o l o r ( ) ;  
-         r e t u r n   C o n t a i n e r (  
-             w i d t h :   5 0 ,  
-             h e i g h t :   5 0 ,  
-             d e c o r a t i o n :   B o x D e c o r a t i o n (  
-                 c o l o r :   c o l o r . w i t h O p a c i t y ( 0 . 1 2 ) ,  
-                 b o r d e r R a d i u s :   B o r d e r R a d i u s . c i r c u l a r ( 1 4 ) ,  
-                 b o r d e r :   B o r d e r . a l l ( c o l o r :   c o l o r . w i t h O p a c i t y ( 0 . 2 5 ) ,   w i d t h :   1 . 2 ) ,  
-             ) ,  
-             c h i l d :   C e n t e r (  
-                 c h i l d :   T e x t (  
-                     n a m e . i s N o t E m p t y   ?   n a m e [ 0 ] . t o U p p e r C a s e ( )   :   ' ? ' ,  
-                     s t y l e :   T e x t S t y l e (  
-                         c o l o r :   c o l o r ,  
-                         f o n t S i z e :   2 0 ,  
-                         f o n t W e i g h t :   F o n t W e i g h t . w 8 0 0 ,  
-                     ) ,  
-                 ) ,  
-             ) ,  
-         ) ;  
-     }  
- }  
-  
- c l a s s   _ T y p e B a d g e   e x t e n d s   S t a t e l e s s W i d g e t   {  
-     f i n a l   S t r i n g   t y p e ;  
-     c o n s t   _ T y p e B a d g e ( { r e q u i r e d   t h i s . t y p e } ) ;  
-  
-     C o l o r   g e t   _ c o l o r   {  
-         s w i t c h   ( t y p e . t o L o w e r C a s e ( ) )   {  
-             c a s e   ' r e m o t e ' :  
-                 r e t u r n   c o n s t   C o l o r ( 0 x F F 1 0 B 9 8 1 ) ;   / /   g r e e n  
-             c a s e   ' o n - s i t e ' :  
-                 r e t u r n   c o n s t   C o l o r ( 0 x F F 3 B 8 2 F 6 ) ;   / /   b l u e  
-             d e f a u l t :  
-                 r e t u r n   c o n s t   C o l o r ( 0 x F F F 5 9 E 0 B ) ;   / /   a m b e r   f o r   h y b r i d  
-         }  
-     }  
-  
-     @ o v e r r i d e  
-     W i d g e t   b u i l d ( B u i l d C o n t e x t   c o n t e x t )   {  
-         r e t u r n   C o n t a i n e r (  
-             p a d d i n g :   c o n s t   E d g e I n s e t s . s y m m e t r i c ( h o r i z o n t a l :   1 0 ,   v e r t i c a l :   5 ) ,  
-             d e c o r a t i o n :   B o x D e c o r a t i o n (  
-                 c o l o r :   _ c o l o r . w i t h O p a c i t y ( 0 . 1 2 ) ,  
-                 b o r d e r R a d i u s :   B o r d e r R a d i u s . c i r c u l a r ( 8 ) ,  
-                 b o r d e r :   B o r d e r . a l l ( c o l o r :   _ c o l o r . w i t h O p a c i t y ( 0 . 3 ) ,   w i d t h :   1 ) ,  
-             ) ,  
-             c h i l d :   T e x t (  
-                 t y p e ,  
-                 s t y l e :   T e x t S t y l e (  
-                     c o l o r :   _ c o l o r ,  
-                     f o n t S i z e :   1 1 ,  
-                     f o n t W e i g h t :   F o n t W e i g h t . w 7 0 0 ,  
-                     l e t t e r S p a c i n g :   0 . 2 ,  
-                 ) ,  
-             ) ,  
-         ) ;  
-     }  
- }  
-  
- c l a s s   _ M e t a C h i p   e x t e n d s   S t a t e l e s s W i d g e t   {  
-     f i n a l   I c o n D a t a   i c o n ;  
-     f i n a l   S t r i n g   l a b e l ;  
-     f i n a l   b o o l   i s D a r k ;  
-     f i n a l   b o o l   h i g h l i g h t ;  
-  
-     c o n s t   _ M e t a C h i p ( {  
-         r e q u i r e d   t h i s . i c o n ,  
-         r e q u i r e d   t h i s . l a b e l ,  
-         r e q u i r e d   t h i s . i s D a r k ,  
-         t h i s . h i g h l i g h t   =   f a l s e ,  
-     } ) ;  
-  
-     @ o v e r r i d e  
-     W i d g e t   b u i l d ( B u i l d C o n t e x t   c o n t e x t )   {  
-         f i n a l   c o l o r   =   h i g h l i g h t  
-                 ?   c o n s t   C o l o r ( 0 x F F 1 0 B 9 8 1 )  
-                 :   ( i s D a r k   ?   A p p C o l o r s . d a r k T e x t S e c o n d a r y   :   A p p C o l o r s . l i g h t T e x t S e c o n d a r y ) ;  
-  
-         r e t u r n   R o w (  
-             m a i n A x i s S i z e :   M a i n A x i s S i z e . m i n ,  
-             c h i l d r e n :   [  
-                 I c o n ( i c o n ,   s i z e :   1 3 ,   c o l o r :   c o l o r ) ,  
-                 c o n s t   S i z e d B o x ( w i d t h :   4 ) ,  
-                 T e x t (  
-                     l a b e l ,  
-                     s t y l e :   T e x t S t y l e (  
-                         c o l o r :   c o l o r ,  
-                         f o n t S i z e :   1 2 ,  
-                         f o n t W e i g h t :   h i g h l i g h t   ?   F o n t W e i g h t . w 7 0 0   :   F o n t W e i g h t . w 5 0 0 ,  
-                     ) ,  
-                 ) ,  
-             ] ,  
-         ) ;  
-     }  
- }  
-  
- c l a s s   _ S k i l l C h i p   e x t e n d s   S t a t e l e s s W i d g e t   {  
-     f i n a l   S t r i n g   l a b e l ;  
-     c o n s t   _ S k i l l C h i p ( { r e q u i r e d   t h i s . l a b e l } ) ;  
-  
-     @ o v e r r i d e  
-     W i d g e t   b u i l d ( B u i l d C o n t e x t   c o n t e x t )   {  
-         r e t u r n   C o n t a i n e r (  
-             p a d d i n g :   c o n s t   E d g e I n s e t s . s y m m e t r i c ( h o r i z o n t a l :   1 0 ,   v e r t i c a l :   4 ) ,  
-             d e c o r a t i o n :   B o x D e c o r a t i o n (  
-                 c o l o r :   A p p C o l o r s . p r i m a r y . w i t h O p a c i t y ( 0 . 0 8 ) ,  
-                 b o r d e r R a d i u s :   B o r d e r R a d i u s . c i r c u l a r ( 7 ) ,  
-                 b o r d e r :   B o r d e r . a l l (  
-                     c o l o r :   A p p C o l o r s . p r i m a r y . w i t h O p a c i t y ( 0 . 1 8 ) ,  
-                     w i d t h :   1 ,  
-                 ) ,  
-             ) ,  
-             c h i l d :   T e x t (  
-                 l a b e l ,  
-                 s t y l e :   T e x t S t y l e (  
-                     c o l o r :   A p p C o l o r s . p r i m a r y ,  
-                     f o n t S i z e :   1 1 ,  
-                     f o n t W e i g h t :   F o n t W e i g h t . w 6 0 0 ,  
-                 ) ,  
-             ) ,  
-         ) ;  
-     }  
- }  
-  
- c l a s s   _ A p p l i e d B a d g e   e x t e n d s   S t a t e l e s s W i d g e t   {  
-     c o n s t   _ A p p l i e d B a d g e ( { s u p e r . k e y } ) ;  
-  
-     @ o v e r r i d e  
-     W i d g e t   b u i l d ( B u i l d C o n t e x t   c o n t e x t )   {  
-         r e t u r n   C o n t a i n e r (  
-             d e c o r a t i o n :   B o x D e c o r a t i o n (  
-                 c o l o r :   c o n s t   C o l o r ( 0 x F F 1 0 B 9 8 1 ) . w i t h O p a c i t y ( 0 . 1 ) ,  
-                 b o r d e r R a d i u s :   B o r d e r R a d i u s . c i r c u l a r ( 1 2 ) ,  
-                 b o r d e r :   B o r d e r . a l l (  
-                     c o l o r :   c o n s t   C o l o r ( 0 x F F 1 0 B 9 8 1 ) . w i t h O p a c i t y ( 0 . 3 5 ) ,  
-                     w i d t h :   1 . 2 ,  
-                 ) ,  
-             ) ,  
-             c h i l d :   c o n s t   R o w (  
-                 m a i n A x i s A l i g n m e n t :   M a i n A x i s A l i g n m e n t . c e n t e r ,  
-                 c h i l d r e n :   [  
-                     I c o n ( I c o n s . c h e c k _ c i r c l e _ r o u n d e d ,  
-                             s i z e :   1 8 ,   c o l o r :   C o l o r ( 0 x F F 1 0 B 9 8 1 ) ) ,  
-                     S i z e d B o x ( w i d t h :   8 ) ,  
-                     T e x t (  
-                         ' A p p l i e d ' ,  
-                         s t y l e :   T e x t S t y l e (  
-                             c o l o r :   C o l o r ( 0 x F F 1 0 B 9 8 1 ) ,  
-                             f o n t S i z e :   1 4 ,  
-                             f o n t W e i g h t :   F o n t W e i g h t . w 7 0 0 ,  
-                         ) ,  
-                     ) ,  
-                 ] ,  
-             ) ,  
-         ) ;  
-     }  
- }  
-  
- c l a s s   _ D i v i d e r   e x t e n d s   S t a t e l e s s W i d g e t   {  
-     f i n a l   b o o l   i s D a r k ;  
-     c o n s t   _ D i v i d e r ( { r e q u i r e d   t h i s . i s D a r k } ) ;  
-  
-     @ o v e r r i d e  
-     W i d g e t   b u i l d ( B u i l d C o n t e x t   c o n t e x t )   {  
-         r e t u r n   C o n t a i n e r (  
-             h e i g h t :   1 ,  
-             c o l o r :   i s D a r k  
-                     ?   A p p C o l o r s . d a r k B o r d e r . w i t h O p a c i t y ( 0 . 5 )  
-                     :   c o n s t   C o l o r ( 0 x F F E E F 2 F 8 ) ,  
-         ) ;  
-     }  
- }  
- 

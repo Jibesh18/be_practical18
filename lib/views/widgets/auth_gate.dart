@@ -1,8 +1,9 @@
 import 'package:be_practical18/views/screens/intern_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../repository/auth_repository.dart';
+import 'package:provider/provider.dart';
 
+import '../../viewmodels/auth_viewmodel.dart';
 import '../screens/employer_home_screen.dart';
 import '../screens/login_screen.dart';
 
@@ -11,10 +12,10 @@ class AuthGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final repo = AuthRepository();
+    final authVM = context.read<AuthViewModel>();
 
     return StreamBuilder<User?>(
-      stream: repo.authStateChanges,
+      stream: authVM.authStateChanges,
       builder: (context, authSnapshot) {
         if (authSnapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -23,15 +24,18 @@ class AuthGate extends StatelessWidget {
         if (user == null) return const LoginScreen();
 
         return FutureBuilder<String?>(
-          future: repo.fetchRoleWithRetry(user.uid),
+          future: authVM.fetchUserRoleWithRetry(),
           builder: (context, roleSnapshot) {
             if (roleSnapshot.connectionState == ConnectionState.waiting) {
               return const Scaffold(body: Center(child: CircularProgressIndicator()));
             }
             switch (roleSnapshot.data) {
-              case 'internSeeker': return const InternScreen(); // FIXED
-              case 'employer':     return const EmployerHomeScreen();
-              default:             return const LoginScreen();
+              case 'internSeeker':
+                return const InternHomeTab();
+              case 'employer':
+                return const EmployerHomeScreen();
+              default:
+                return const LoginScreen();
             }
           },
         );

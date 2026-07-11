@@ -1,13 +1,25 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import '../models/user_model.dart';
 
+import '../models/user_model.dart';
+import '../repository/auth_repository.dart';
+import '../services/user_services.dart';
+
+/// ViewModel for authentication + the current user's profile.
+///
+/// IMPORTANT: This class no longer talks to FirebaseAuth/Firestore directly.
+/// All data access goes through AuthRepository (auth) and UserService
+/// (profile document), so there is exactly one place that knows how auth
+/// and user documents are stored.
 class AuthViewModel extends ChangeNotifier {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final AuthRepository _authRepo;
+  final UserService _userService;
+
+  AuthViewModel({
+    AuthRepository? authRepository,
+    UserService? userService,
+  })  : _authRepo = authRepository ?? AuthRepository(),
+        _userService = userService ?? UserService();
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -16,28 +28,11 @@ class AuthViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get userRole => _userRole;
-  User? get currentUser => _auth.currentUser;
-  Stream<UserModel?> watchUserProfile(String uid) {
-    return _firestore
-        .collection('users')
-        .doc(uid)
-        .snapshots()
-        .map((doc) => doc.exists
-        ? UserModel.fromMap(doc.data()!, doc.id)
-        : null);
-  }
-  Future<void> updateProfile({
-    required String uid,
-    required String name,
-    required String bio,
-    required List<String> skills,
-  }) async {
-    await _firestore.collection('users').doc(uid).update({
-      'name': name.trim(),
-      'bio': bio.trim(),
-      'skills': skills,
-    });
-  }
+  User? get currentUser => _authRepo.currentUser;
+
+  /// Exposed so widgets like AuthGate can watch auth state through the
+  /// ViewModel instead of instantiating AuthRepository themselves.
+  Stream<User?> get authStateChanges => _authRepo.authStateChanges;
 
   void _setLoading(bool value) {
     _isLoading = value;
@@ -59,9 +54,9 @@ class AuthViewModel extends ChangeNotifier {
     _setError(null);
 
     try {
-      final credential = await _auth.createUserWithEmailAndPassword(
-        email: email.trim(),
-        password: password.trim(),
+      final credential = await _authRepo.registerWithEmail(
+        email: email,
+        password: password,
       );
 
       final user = credential.user;
@@ -72,14 +67,13 @@ class AuthViewModel extends ChangeNotifier {
 
       await user.updateDisplayName(name.trim());
 
-      await _firestore.collection('users').doc(user.uid).set({
-        'uid': user.uid,
-        'name': name.trim(),
-        'email': email.trim(),
-        'role': role,
-        'authProvider': 'password',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      await _authRepo.saveUser(
+        uid: user.uid,
+        name: name.trim(),
+        email: email.trim(),
+        role: role,
+        authProvider: 'password',
+      );
 
       _userRole = role;
       return true;
@@ -87,13 +81,12 @@ class AuthViewModel extends ChangeNotifier {
       _setError(_mapAuthError(e));
       return false;
     } catch (e) {
-      debugPrint('Register error: $e');   // ← also fix the silent catch
+      debugPrint('Register error: $e');
       _setError('Something went wrong.');
       return false;
     } finally {
       _setLoading(false);
     }
-
   }
 
   Future<bool> login({
@@ -104,15 +97,14 @@ class AuthViewModel extends ChangeNotifier {
     _setError(null);
 
     try {
-      final credential = await _auth.signInWithEmailAndPassword(
-        email: email.trim(),
-        password: password.trim(),
+      final credential = await _authRepo.loginWithEmail(
+        email: email,
+        password: password,
       );
 
       final user = credential.user;
       if (user != null) {
-        final doc = await _firestore.collection('users').doc(user.uid).get();
-        _userRole = doc.data()?['role'] as String?;
+        _userRole = await _authRepo.fetchRole(user.uid);
       }
 
       return true;
@@ -126,15 +118,13 @@ class AuthViewModel extends ChangeNotifier {
       _setLoading(false);
     }
   }
+
   Future<bool> resetPassword(String email) async {
     _setLoading(true);
     _setError(null);
 
     try {
-      await _auth.sendPasswordResetEmail(
-        email: email.trim(),
-      );
-
+      await _authRepo.sendPasswordReset(email);
       return true;
     } on FirebaseAuthException catch (e) {
       _setError(_mapAuthError(e));
@@ -146,53 +136,38 @@ class AuthViewModel extends ChangeNotifier {
       _setLoading(false);
     }
   }
+
   Future<bool> signInWithGoogle({required String role}) async {
     _setLoading(true);
     _setError(null);
 
     try {
-      final googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) {
+      final userCredential = await _authRepo.signInWithGoogle();
+      final user = userCredential?.user;
+      if (user == null) {
         _setError('Google sign-in cancelled.');
         return false;
       }
 
-      final googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
+      final existingRole = await _authRepo.fetchRole(user.uid);
 
-      final userCredential = await _auth.signInWithCredential(credential);
-      final user = userCredential.user;
-      if (user == null) {
-        _setError('Google sign-in failed.');
-        return false;
-      }
-
-      final docRef = _firestore.collection('users').doc(user.uid);
-      final doc = await docRef.get();
-
-      if (!doc.exists) {
-        // New user — registration flow, save with role
+      if (existingRole == null) {
+        // New user — registration flow, save with role.
         if (role.isEmpty) {
           _setError('Account not found. Please register first.');
-          await _auth.signOut();
-          await _googleSignIn.signOut();
+          await _authRepo.logout();
           return false;
         }
-        await docRef.set({
-          'uid': user.uid,
-          'name': user.displayName ?? '',
-          'email': user.email ?? '',
-          'role': role,
-          'authProvider': 'google',
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        await _authRepo.saveUser(
+          uid: user.uid,
+          name: user.displayName ?? '',
+          email: user.email ?? '',
+          role: role,
+          authProvider: 'google',
+        );
         _userRole = role;
       } else {
-        // Existing user — login flow, just read role
-        _userRole = doc.data()?['role'] as String?;
+        _userRole = existingRole;
       }
 
       return true;
@@ -210,15 +185,19 @@ class AuthViewModel extends ChangeNotifier {
     _setError(null);
 
     try {
-      final user = _auth.currentUser;
+      final user = _authRepo.currentUser;
       if (user == null) {
         _setError('No signed-in user.');
         return false;
       }
 
-      await _firestore.collection('users').doc(user.uid).set({
-        'role': role,
-      }, SetOptions(merge: true));
+      await _authRepo.saveUser(
+        uid: user.uid,
+        name: user.displayName ?? '',
+        email: user.email ?? '',
+        role: role,
+        authProvider: 'password',
+      );
 
       _userRole = role;
       return true;
@@ -231,22 +210,53 @@ class AuthViewModel extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    await _auth.signOut();
-    await _googleSignIn.signOut();
+    await _authRepo.logout();
     _userRole = null;
     _errorMessage = null;
     notifyListeners();
   }
 
   Future<String?> fetchUserRole() async {
-    final user = _auth.currentUser;
+    final user = _authRepo.currentUser;
     if (user == null) return null;
 
-    final doc = await _firestore.collection('users').doc(user.uid).get();
-    _userRole = doc.data()?['role'] as String?;
+    _userRole = await _authRepo.fetchRole(user.uid);
     notifyListeners();
     return _userRole;
   }
+
+  /// Used by AuthGate right after register/login, when the Firestore
+  /// user doc may not have propagated yet.
+  Future<String?> fetchUserRoleWithRetry() async {
+    final user = _authRepo.currentUser;
+    if (user == null) return null;
+
+    _userRole = await _authRepo.fetchRoleWithRetry(user.uid);
+    notifyListeners();
+    return _userRole;
+  }
+
+  // ── Profile (delegates to UserService) ─────────────────────────────────
+
+  /// Live stream of the current user's profile document, for ProfileTab
+  /// and anywhere else that needs to watch profile changes.
+  Stream<UserModel?> watchUserProfile(String uid) =>
+      _userService.watchUser(uid);
+
+  Future<void> updateProfile({
+    required String uid,
+    required String name,
+    required String bio,
+    required List<String> skills,
+  }) {
+    return _userService.updateProfile(
+      uid: uid,
+      name: name,
+      bio: bio,
+      skills: skills,
+    );
+  }
+
   String _mapAuthError(FirebaseAuthException e) {
     switch (e.code) {
       case 'invalid-email':
