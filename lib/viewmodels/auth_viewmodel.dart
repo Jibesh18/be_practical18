@@ -6,13 +6,9 @@ import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../repository/auth_repository.dart';
 import '../services/user_services.dart';
+import 'dart:io';
+import 'dart:convert';
 
-/// ViewModel for authentication + the current user's profile.
-///
-/// IMPORTANT: This class no longer talks to FirebaseAuth/Firestore directly.
-/// All data access goes through AuthRepository (auth) and UserService
-/// (profile document), so there is exactly one place that knows how auth
-/// and user documents are stored.
 class AuthViewModel extends ChangeNotifier {
   final AuthRepository _authRepo;
   final UserService _userService;
@@ -90,7 +86,23 @@ class AuthViewModel extends ChangeNotifier {
       _setLoading(false);
     }
   }
+  Future<void> uploadCV({required String uid, required File file}) async {
+    final bytes = await file.readAsBytes();
+    if (bytes.length > UserService.maxCvBytes) {
+      throw Exception('CV file is too large. Please keep it under 700KB.');
+    }
+    final base64Data = base64Encode(bytes);
+    final fileName = file.path.split(Platform.pathSeparator).last;
+    await _userService.uploadCvBase64(
+      uid: uid,
+      base64Data: base64Data,
+      fileName: fileName,
+    );
+  }
 
+  Future<Map<String, dynamic>?> fetchCvData(String uid) {
+    return _userService.fetchCvData(uid);
+  }
   Future<bool> login({
     required String email,
     required String password,
@@ -255,7 +267,6 @@ class AuthViewModel extends ChangeNotifier {
     String? experience,
     String? linkedinUrl,
     String? githubUrl,
-    String? cvUrl,
   }) {
     return _userService.updateProfile(
       uid: uid,
@@ -266,7 +277,6 @@ class AuthViewModel extends ChangeNotifier {
       experience: experience,
       linkedinUrl: linkedinUrl,
       githubUrl: githubUrl,
-      cvUrl: cvUrl,
     );
   }
 
