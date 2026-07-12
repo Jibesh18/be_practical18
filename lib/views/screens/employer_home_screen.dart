@@ -10,7 +10,7 @@ import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/employer_viewmodel.dart';
 import '../tabs/employers_listings_tab.dart';
 import '../tabs/employer_post_tab.dart';
-import '../tabs/employer_suggestion_tab.dart';  // ← AI tab
+import '../tabs/employer_suggestion_tab.dart';
 import '../tabs/employer_profile_tab.dart';
 
 class EmployerHomeScreen extends StatefulWidget {
@@ -24,72 +24,71 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> {
   int _currentIndex = 0;
 
   @override
-Widget build(BuildContext context) {
-  final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-  return ChangeNotifierProvider(
-    create: (_) => EmployerViewModel(),
-    child: Builder(
-      builder: (context) {
-        final tabs = [
-      _EmployerDashboardTab(
-          onNavigate: (i) => setState(() => _currentIndex = i)),
-      const EmployerListingsTab(),
-      const EmployerPostTab(),
-      const EmployerSuggestionsTab(),   // ← AI tab (no employerId needed)
-      const EmployerProfileTab(),
-    ];
+    return ChangeNotifierProvider(
+      create: (_) => EmployerViewModel(),
+      child: Builder(
+        builder: (context) {
+          final tabs = [
+            _EmployerDashboardTab(
+                onNavigate: (i) => setState(() => _currentIndex = i)),
+            const EmployerListingsTab(),
+            const EmployerPostTab(),
+            const EmployerSuggestionsTab(),
+            const EmployerProfileTab(),
+          ];
 
-    return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
-      body: IndexedStack(index: _currentIndex, children: tabs),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
+          return Scaffold(
+            backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+            body: IndexedStack(index: _currentIndex, children: tabs),
+            bottomNavigationBar: Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: BottomNavigationBar(
+                type: BottomNavigationBarType.fixed,
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                currentIndex: _currentIndex,
+                onTap: (i) => setState(() => _currentIndex = i),
+                selectedItemColor: AppColors.primary,
+                unselectedItemColor: isDark
+                    ? AppColors.darkTextSecondary
+                    : AppColors.lightTextSecondary,
+                selectedLabelStyle: AppTextStyles.labelSmall
+                    .copyWith(fontWeight: FontWeight.w700, color: AppColors.primary),
+                unselectedLabelStyle: AppTextStyles.labelSmall,
+                items: const [
+                  BottomNavigationBarItem(
+                      icon: Icon(Iconsax.home), label: 'Dashboard'),
+                  BottomNavigationBarItem(
+                      icon: Icon(Iconsax.briefcase), label: 'Listings'),
+                  BottomNavigationBarItem(
+                      icon: Icon(Iconsax.add_circle), label: 'Post'),
+                  // â† Changed from Applicants to AI tab
+                  BottomNavigationBarItem(
+                      icon: Icon(Icons.auto_awesome_rounded), label: 'AI Picks'),
+                  BottomNavigationBarItem(
+                      icon: Icon(Iconsax.profile_circle), label: 'Profile'),
+                ],
+              ),
             ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          currentIndex: _currentIndex,
-          onTap: (i) => setState(() => _currentIndex = i),
-          selectedItemColor: AppColors.primary,
-          unselectedItemColor: isDark
-              ? AppColors.darkTextSecondary
-              : AppColors.lightTextSecondary,
-          selectedLabelStyle: AppTextStyles.labelSmall
-              .copyWith(fontWeight: FontWeight.w700, color: AppColors.primary),
-          unselectedLabelStyle: AppTextStyles.labelSmall,
-          items: const [
-            BottomNavigationBarItem(
-                icon: Icon(Iconsax.home), label: 'Dashboard'),
-            BottomNavigationBarItem(
-                icon: Icon(Iconsax.briefcase), label: 'Listings'),
-            BottomNavigationBarItem(
-                icon: Icon(Iconsax.add_circle), label: 'Post'),
-            // ← Changed from Applicants to AI tab
-            BottomNavigationBarItem(
-                icon: Icon(Icons.auto_awesome_rounded), label: 'AI Picks'),
-            BottomNavigationBarItem(
-                icon: Icon(Iconsax.profile_circle), label: 'Profile'),
-          ],
-        ),
+          );
+        },
       ),
     );
-      },
-    ),
-  );
   }
 }
 
-// ── Dashboard Tab ─────────────────────────────────────────────────────────────
 
 class _EmployerDashboardTab extends StatelessWidget {
   final void Function(int index) onNavigate;
@@ -121,7 +120,6 @@ class _EmployerDashboardTab extends StatelessWidget {
 
                 SliverToBoxAdapter(child: _TopBar(name: name, isDark: isDark)),
 
-                // ── OVERVIEW ──
                 _SectionLabel(label: 'OVERVIEW'),
                 SliverToBoxAdapter(
                   child: Padding(
@@ -137,7 +135,6 @@ class _EmployerDashboardTab extends StatelessWidget {
                   ),
                 ),
 
-                // ── HIRING FUNNEL ──
                 _SectionLabel(label: 'HIRING FUNNEL'),
                 SliverToBoxAdapter(
                   child: Padding(
@@ -154,7 +151,6 @@ class _EmployerDashboardTab extends StatelessWidget {
                   ),
                 ),
 
-                // ── ACTIVE LISTINGS ──
                 _SectionLabel(label: 'ACTIVE LISTINGS'),
                 SliverToBoxAdapter(
                   child: Padding(
@@ -169,7 +165,6 @@ class _EmployerDashboardTab extends StatelessWidget {
                   ),
                 ),
 
-                // ── RECENT APPLICANTS ──
                 _SectionLabel(label: 'RECENT APPLICANTS'),
                 SliverToBoxAdapter(
                   child: Padding(
@@ -193,7 +188,6 @@ class _EmployerDashboardTab extends StatelessWidget {
   }
 }
 
-// ── Top Bar ───────────────────────────────────────────────────────────────────
 
 class _TopBar extends StatelessWidget {
   final String name;
@@ -214,7 +208,7 @@ class _TopBar extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Good ${_greeting()}, $name 👋',
+                    'Good ${_greeting()}, $name‘‹',
                     style: AppTextStyles.bodyMedium.copyWith(
                       color: isDark
                           ? AppColors.darkTextSecondary
@@ -234,23 +228,6 @@ class _TopBar extends StatelessWidget {
                 ],
               ),
             ),
-            // Notification bell with indigo accent
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.10),
-                borderRadius: BorderRadius.circular(13),
-                border: Border.all(
-                  color: AppColors.primary.withOpacity(0.20),
-                ),
-              ),
-              child: const Icon(
-                Iconsax.notification,
-                size: 20,
-                color: AppColors.primary,
-              ),
-            ),
           ],
         ),
       ),
@@ -265,7 +242,6 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-// ── Section Label ─────────────────────────────────────────────────────────────
 
 class _SectionLabel extends StatelessWidget {
   final String label;
@@ -305,7 +281,6 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-// ── Overview Card ─────────────────────────────────────────────────────────────
 
 class _OverviewCard extends StatelessWidget {
   final List<InternshipModel> listings;
@@ -332,7 +307,6 @@ class _OverviewCard extends StatelessWidget {
       isDark: isDark,
       child: Column(
         children: [
-          // ── 4 colourful stat tiles ──
           Row(
             children: [
               _StatTile(
@@ -385,7 +359,6 @@ class _OverviewCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
 
-          // ── Quick action chips ──
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -537,7 +510,6 @@ class _ActionChip extends StatelessWidget {
   }
 }
 
-// ── Hiring Funnel Card ────────────────────────────────────────────────────────
 
 class _HiringFunnelCard extends StatelessWidget {
   final int total;
@@ -587,7 +559,7 @@ class _HiringFunnelCard extends StatelessWidget {
               GestureDetector(
                 onTap: onViewAll,
                 child: Text(
-                  'AI Picks →',
+                  'AI Picks’',
                   style: AppTextStyles.labelSmall.copyWith(
                       color: AppColors.primary, fontWeight: FontWeight.w600),
                 ),
@@ -700,7 +672,6 @@ class _FunnelRow extends StatelessWidget {
   }
 }
 
-// ── Active Listings Card ──────────────────────────────────────────────────────
 
 class _ActiveListingsCard extends StatelessWidget {
   final List<InternshipModel> listings;
@@ -745,7 +716,7 @@ class _ActiveListingsCard extends StatelessWidget {
               GestureDetector(
                 onTap: onManageAll,
                 child: Text(
-                  'Manage all →',
+                  'Manage all â†’',
                   style: AppTextStyles.labelSmall.copyWith(
                       color: AppColors.primary, fontWeight: FontWeight.w600),
                 ),
@@ -838,7 +809,7 @@ class _ListingRow extends StatelessWidget {
         ),
       ),
       // CHANGED: summary-only row, no toggle button
-      // Employer taps "Manage all →" to go to Listings tab for actions
+      // Employer taps "Manage all â†’" to go to Listings tab for actions
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -874,7 +845,7 @@ class _ListingRow extends StatelessWidget {
                         .copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
                 Text(
-                  '${internship.type} · ${internship.duration} · ${internship.stipend}',
+                  '${internship.type} Â· ${internship.duration} Â· ${internship.stipend}',
                   style: AppTextStyles.bodySmall.copyWith(
                     color: isDark
                         ? AppColors.darkTextSecondary
@@ -942,7 +913,7 @@ class _MiniChip extends StatelessWidget {
   }
 }
 
-// ── Recent Applicants Card ────────────────────────────────────────────────────
+// â”€â”€ Recent Applicants Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _RecentApplicantsCard extends StatelessWidget {
   final List<ApplicationModel> apps;
@@ -985,7 +956,7 @@ class _RecentApplicantsCard extends StatelessWidget {
               GestureDetector(
                 onTap: onViewAll,
                 child: Text(
-                  'View all →',
+                  'View all’',
                   style: AppTextStyles.labelSmall.copyWith(
                       color: AppColors.primary, fontWeight: FontWeight.w600),
                 ),
@@ -1104,7 +1075,7 @@ class _ApplicantRow extends StatelessWidget {
                     style: AppTextStyles.labelMedium
                         .copyWith(fontWeight: FontWeight.w700)),
                 Text(
-                  '${app.internshipTitle} · ${_timeAgo(app.appliedAt)}',
+                  '${app.internshipTitle} Â· ${_timeAgo(app.appliedAt)}',
                   style: AppTextStyles.bodySmall.copyWith(
                     color: isDark
                         ? AppColors.darkTextSecondary
@@ -1137,7 +1108,7 @@ class _ApplicantRow extends StatelessWidget {
   }
 }
 
-// ── Shared Card Wrapper ───────────────────────────────────────────────────────
+// â”€â”€ Shared Card Wrapper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _Card extends StatelessWidget {
   final Widget child;
@@ -1172,7 +1143,7 @@ class _Card extends StatelessWidget {
   }
 }
 
-// ── All Applicants Screen (pushed from Recent Applicants "View all") ──────────
+// â”€â”€ All Applicants Screen (pushed from Recent Applicants "View all") â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Shows every applicant across all the employer's listings, grouped by listing.
 // Employer can Accept, Shortlist, or Reject from here.
 
@@ -1369,7 +1340,7 @@ class AllApplicantsScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-                          // Action buttons — only for undecided, non-closed applicants
+                          // Action buttons â€” only for undecided, non-closed applicants
                           if (!isClosed && !isDecided) ...[
                             const SizedBox(height: 12),
                             Row(
