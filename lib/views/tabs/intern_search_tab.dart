@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../models/resource_model.dart';
 import '../../themes/app_colors.dart';
 import '../../themes/app_textstyles.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/internship_viewmodel.dart';
+import '../../viewmodels/resource_provider.dart';
 import '../screens/intern_detail_screen.dart';
 import '../widgets/internship_card.dart';
 import '../widgets/incomplete_profile_dialog.dart';
@@ -14,12 +17,82 @@ import '../widgets/incomplete_profile_dialog.dart';
 // that Search is reached via Navigator.push instead of a bottom-nav tab,
 // it needs its own Scaffold — otherwise TextField/FilterChip crash with
 // "No Material widget found" and the search bar appears broken.
-class InternSearchTab extends StatelessWidget {
+//
+// UPDATED: converted to StatefulWidget so it can fetch resources once on
+// load (same pattern ResourcesTab already uses), and added an Internships/
+// Resources toggle so one search box covers both — previously this only
+// ever searched InternshipModel fields, so resources were unreachable
+// from search entirely.
+class InternSearchTab extends StatefulWidget {
   const InternSearchTab({super.key});
+
+  @override
+  State<InternSearchTab> createState() => _InternSearchTabState();
+}
+
+enum _SearchScope { internships, resources }
+
+class _InternSearchTabState extends State<InternSearchTab> {
+  _SearchScope _scope = _SearchScope.internships;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ResourcesViewModel>().fetchResources();
+    });
+  }
+
+  Future<void> _openResource(BuildContext context, String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null || url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This resource has no link yet.')),
+      );
+      return;
+    }
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open link')),
+        );
+      }
+    }
+  }
+
+  IconData _resourceIcon(String name) {
+    switch (name) {
+      case 'phone':
+        return Icons.phone_android_rounded;
+      case 'code':
+        return Icons.code_rounded;
+      case 'design':
+        return Icons.design_services_rounded;
+      case 'cloud':
+        return Icons.cloud_rounded;
+      case 'web':
+        return Icons.web_rounded;
+      case 'school':
+      default:
+        return Icons.school_rounded;
+    }
+  }
+
+  List<ResourceModel> _filterResources(List<ResourceModel> all, String query) {
+    if (query.isEmpty) return all;
+    final q = query.toLowerCase();
+    return all.where((r) =>
+    r.title.toLowerCase().contains(q) ||
+        r.provider.toLowerCase().contains(q) ||
+        r.category.toLowerCase().contains(q) ||
+        r.description.toLowerCase().contains(q)
+    ).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
     final internVM = context.watch<InternshipViewModel>();
+    final resourcesVM = context.watch<ResourcesViewModel>();
     final authVM = context.watch<AuthViewModel>();
     final user = authVM.currentUser;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -35,7 +108,7 @@ class InternSearchTab extends StatelessWidget {
               color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary, size: 18),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text('Search internships',
+        title: Text('Search',
             style: AppTextStyles.titleMedium.copyWith(
               color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
               fontWeight: FontWeight.w600,
@@ -51,7 +124,9 @@ class InternSearchTab extends StatelessWidget {
               child: TextField(
                 onChanged: internVM.setSearchQuery,
                 decoration: InputDecoration(
-                  hintText: 'Search by title, company, skill...',
+                  hintText: _scope == _SearchScope.internships
+                      ? 'Search by title, company, skill...'
+                      : 'Search resources, providers, categories...',
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon: internVM.searchQuery.isNotEmpty
                       ? IconButton(
@@ -71,36 +146,65 @@ class InternSearchTab extends StatelessWidget {
               ),
             ),
 
-            // ── Filter chips ────────────────────────────────────────────────────
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
+            // ── Internships / Resources toggle ─────────────────────────────────
+            Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
-                  for (final type in ['All', 'Remote', 'On-site', 'Hybrid'])
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
-                        label: Text(type),
-                        selected: internVM.selectedType == type,
-                        onSelected: (_) => internVM.setType(type),
-                        selectedColor: AppColors.primary.withOpacity(0.15),
-                        checkmarkColor: AppColors.primary,
-                        labelStyle: AppTextStyles.labelSmall.copyWith(
-                          color: internVM.selectedType == type
-                              ? AppColors.primary
-                              : null,
-                        ),
-                      ),
+                  Expanded(
+                    child: _ScopeChip(
+                      label: 'Internships',
+                      selected: _scope == _SearchScope.internships,
+                      onTap: () => setState(() => _scope = _SearchScope.internships),
+                      isDark: isDark,
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _ScopeChip(
+                      label: 'Resources',
+                      selected: _scope == _SearchScope.resources,
+                      onTap: () => setState(() => _scope = _SearchScope.resources),
+                      isDark: isDark,
+                    ),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 8),
 
+            // ── Filter chips (internships only) ────────────────────────────────
+            if (_scope == _SearchScope.internships)
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    for (final type in ['All', 'Remote', 'On-site', 'Hybrid'])
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          label: Text(type),
+                          selected: internVM.selectedType == type,
+                          onSelected: (_) => internVM.setType(type),
+                          selectedColor: AppColors.primary.withOpacity(0.15),
+                          checkmarkColor: AppColors.primary,
+                          labelStyle: AppTextStyles.labelSmall.copyWith(
+                            color: internVM.selectedType == type
+                                ? AppColors.primary
+                                : null,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 8),
+
             // ── Results ─────────────────────────────────────────────────────────
             Expanded(
-              child: StreamBuilder(
+              child: _scope == _SearchScope.internships
+                  ? StreamBuilder(
                 stream: internVM.allInternships,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -158,10 +262,126 @@ class InternSearchTab extends StatelessWidget {
                     },
                   );
                 },
+              )
+                  : Builder(
+                builder: (context) {
+                  if (resourcesVM.isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final filtered = _filterResources(resourcesVM.resources, internVM.searchQuery);
+
+                  if (filtered.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off_rounded,
+                            size: 48,
+                            color: isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.lightTextSecondary,
+                          ),
+                          const SizedBox(height: 12),
+                          Text('No resources found', style: AppTextStyles.bodyMedium),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      final r = filtered[index];
+                      return GestureDetector(
+                        onTap: () => _openResource(context, r.url),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.darkSurface : Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(_resourceIcon(r.iconName), color: AppColors.primary, size: 22),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(r.title, style: AppTextStyles.titleMedium,
+                                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                                    if (r.provider.isNotEmpty)
+                                      Text(r.provider,
+                                          style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary)),
+                                    const SizedBox(height: 4),
+                                    Text(r.description,
+                                        style: AppTextStyles.bodySmall.copyWith(
+                                          color: isDark
+                                              ? AppColors.darkTextSecondary
+                                              : AppColors.lightTextSecondary,
+                                        ),
+                                        maxLines: 2, overflow: TextOverflow.ellipsis),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(Icons.open_in_new_rounded, size: 16,
+                                  color: isDark ? AppColors.darkTextTertiary : AppColors.lightTextTertiary),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ScopeChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final bool isDark;
+  const _ScopeChip({required this.label, required this.selected, required this.onTap, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.primary
+              : (isDark ? AppColors.darkSurface : AppColors.lightDivider),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(label,
+            style: AppTextStyles.labelMedium.copyWith(
+              color: selected ? Colors.white : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+              fontWeight: FontWeight.w600,
+            )),
       ),
     );
   }
@@ -235,7 +455,7 @@ class _ApplyableSearchCardState extends State<_ApplyableSearchCard> {
       SnackBar(
         content: Text(
           success
-              ? 'Applied to ${widget.internship.company}! 🎉'
+              ? 'Applied to ${widget.internship.company}!'
               : vm.applyError ?? 'Something went wrong.',
         ),
         backgroundColor: success ? AppColors.success : AppColors.error,
