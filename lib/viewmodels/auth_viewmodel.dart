@@ -270,7 +270,33 @@ class AuthViewModel extends ChangeNotifier {
     );
   }
 
-
+  Future<void> saveRole({
+    required String uid,
+    required String name,
+    required String email,
+    required String role,
+  }) async {
+    await _authRepo.saveUser(
+      uid: uid,
+      name: name,
+      email: email,
+      role: role,
+      authProvider: 'google',
+    );
+  }
+  Future<UserCredential?> signInWithGoogleAndCheckRole() async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final userCredential = await _authRepo.signInWithGoogle();
+      return userCredential;
+    } catch (e) {
+      _setError('Google sign-in failed. Please try again.');
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
 
   String _mapAuthError(FirebaseAuthException e) {
     switch (e.code) {

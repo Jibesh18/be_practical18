@@ -31,7 +31,7 @@ class AuthGate extends StatelessWidget {
             }
             switch (roleSnapshot.data) {
               case 'internSeeker':
-                return const InternHomeTab();
+                return const InternScreen();
               case 'employer':
                 return const EmployerHomeScreen();
               default:
