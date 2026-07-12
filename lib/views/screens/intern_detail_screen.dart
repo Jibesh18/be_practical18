@@ -1,7 +1,7 @@
 // lib/views/screens/internship_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import '../widgets/incomplete_profile_dialog.dart';
 import '../../models/internship_model.dart';
 import '../../themes/app_colors.dart';
 import '../../themes/app_textstyles.dart';
@@ -43,6 +43,13 @@ class _InternshipDetailScreenState extends State<InternshipDetailScreen> {
     final authVM = context.read<AuthViewModel>();
     final user = authVM.currentUser;
     if (user == null || _applying) return;
+
+    final profile = await authVM.getUserProfile(user.uid);
+    if (!(profile?.isProfileComplete ?? false)) {
+      if (!mounted) return;
+      showIncompleteProfileDialog(context);
+      return;
+    }
 
     setState(() => _applying = true);
 

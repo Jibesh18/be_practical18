@@ -6,6 +6,7 @@ import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/internship_viewmodel.dart';
 import '../screens/intern_detail_screen.dart';
 import '../widgets/internship_card.dart';
+import '../widgets/incomplete_profile_dialog.dart';
 
 // FIXED: This used to be a bare Column with no Scaffold, which was fine
 // while it lived inside InternHomeTab's IndexedStack (that Scaffold
@@ -205,6 +206,15 @@ class _ApplyableSearchCardState extends State<_ApplyableSearchCard> {
 
   Future<void> _apply() async {
     if (widget.userId == null || _applying) return;
+
+    final authVM = context.read<AuthViewModel>();
+    final profile = await authVM.getUserProfile(widget.userId!);
+    if (!(profile?.isProfileComplete ?? false)) {
+      if (!mounted) return;
+      showIncompleteProfileDialog(context);
+      return;
+    }
+
     setState(() => _applying = true);
 
     final vm = context.read<InternshipViewModel>();

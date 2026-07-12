@@ -9,6 +9,11 @@ class UserModel {
   final String bio;
   final List<String> skills;
   final String photoURL;
+  final String education;
+  final String experience;
+  final String cvUrl;
+  final String linkedinUrl;
+  final String githubUrl;
   final DateTime createdAt;
 
   UserModel({
@@ -20,6 +25,11 @@ class UserModel {
     this.bio = '',
     this.skills = const [],
     this.photoURL = '',
+    this.education = '',
+    this.experience = '',
+    this.cvUrl = '',
+    this.linkedinUrl = '',
+    this.githubUrl = '',
     required this.createdAt,
   });
 
@@ -33,6 +43,11 @@ class UserModel {
       bio: map['bio'] ?? '',
       skills: List<String>.from(map['skills'] ?? []),
       photoURL: map['photoURL'] ?? '',
+      education: map['education'] ?? '',
+      experience: map['experience'] ?? '',
+      cvUrl: map['cvUrl'] ?? '',
+      linkedinUrl: map['linkedinUrl'] ?? '',
+      githubUrl: map['githubUrl'] ?? '',
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
@@ -47,6 +62,11 @@ class UserModel {
       'bio': bio,
       'skills': skills,
       'photoURL': photoURL,
+      'education': education,
+      'experience': experience,
+      'cvUrl': cvUrl,
+      'linkedinUrl': linkedinUrl,
+      'githubUrl': githubUrl,
       'createdAt': FieldValue.serverTimestamp(),
     };
   }
@@ -56,6 +76,11 @@ class UserModel {
     String? bio,
     List<String>? skills,
     String? photoURL,
+    String? education,
+    String? experience,
+    String? cvUrl,
+    String? linkedinUrl,
+    String? githubUrl,
   }) {
     return UserModel(
       uid: uid,
@@ -66,8 +91,14 @@ class UserModel {
       bio: bio ?? this.bio,
       skills: skills ?? this.skills,
       photoURL: photoURL ?? this.photoURL,
+      education: education ?? this.education,
+      experience: experience ?? this.experience,
+      cvUrl: cvUrl ?? this.cvUrl,
+      linkedinUrl: linkedinUrl ?? this.linkedinUrl,
+      githubUrl: githubUrl ?? this.githubUrl,
       createdAt: createdAt,
     );
   }
+  bool get isProfileComplete =>
+      bio.isNotEmpty && education.isNotEmpty && skills.isNotEmpty;
 }
- 

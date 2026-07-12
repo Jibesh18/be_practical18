@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -242,20 +244,33 @@ class AuthViewModel extends ChangeNotifier {
   /// and anywhere else that needs to watch profile changes.
   Stream<UserModel?> watchUserProfile(String uid) =>
       _userService.watchUser(uid);
+  Future<UserModel?> getUserProfile(String uid) => _userService.getUser(uid);
 
   Future<void> updateProfile({
     required String uid,
     required String name,
     required String bio,
     required List<String> skills,
+    String? education,
+    String? experience,
+    String? linkedinUrl,
+    String? githubUrl,
+    String? cvUrl,
   }) {
     return _userService.updateProfile(
       uid: uid,
       name: name,
       bio: bio,
       skills: skills,
+      education: education,
+      experience: experience,
+      linkedinUrl: linkedinUrl,
+      githubUrl: githubUrl,
+      cvUrl: cvUrl,
     );
   }
+
+
 
   String _mapAuthError(FirebaseAuthException e) {
     switch (e.code) {

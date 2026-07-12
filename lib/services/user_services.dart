@@ -15,15 +15,26 @@ class UserService {
     required String name,
     required String bio,
     required List<String> skills,
+    String? education,
+    String? experience,
+    String? linkedinUrl,
+    String? githubUrl,
+    String? cvUrl,
   }) async {
-    await _firestore.collection('users').doc(uid).update({
+    final data = <String, dynamic>{
       'name': name.trim(),
       'bio': bio.trim(),
       'skills': skills,
-    });
+    };
+    if (education != null) data['education'] = education.trim();
+    if (experience != null) data['experience'] = experience.trim();
+    if (linkedinUrl != null) data['linkedinUrl'] = linkedinUrl.trim();
+    if (githubUrl != null) data['githubUrl'] = githubUrl.trim();
+    if (cvUrl != null) data['cvUrl'] = cvUrl.trim();
+
+    await _firestore.collection('users').doc(uid).update(data);
   }
 
-  // Fetch all intern applicants by their UIDs
   Future<List<UserModel>> getApplicantProfiles(List<String> uids) async {
     if (uids.isEmpty) return [];
     final futures = uids.map((uid) => getUser(uid));
