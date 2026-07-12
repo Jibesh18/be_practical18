@@ -220,9 +220,11 @@ class _SuggestionsPanel extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2, color: _kAiAccent),
                 ),
                 const SizedBox(width: 12),
-                Text('Matching your profile against open roles...',
+                Expanded(
+                child: Text('Matching your profile against open roles...',
                     style: AppTextStyles.bodyMedium.copyWith(color: _kAiAccent)),
-              ],
+                )
+                  ],
             ),
           ] else ...[
             Text(
