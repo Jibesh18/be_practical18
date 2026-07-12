@@ -37,26 +37,40 @@ class InternAiSuggestionsTab extends StatelessWidget {
             builder: (context, listSnap) {
               final internships = listSnap.data ?? [];
 
-              return ListView(
-                padding: const EdgeInsets.all(20),
-                children: [
-                  _Header(isDark: isDark),
-                  const SizedBox(height: 20),
+              // Fetches the uploaded CV once per build of this screen (not
+              // on every keystroke/rebuild elsewhere) — a Future rather
+              // than a Stream since the CV rarely changes mid-session.
+              return FutureBuilder<Map<String, dynamic>?>(
+                future: userModel == null ? null : authVM.fetchCvData(user.uid),
+                builder: (context, cvSnap) {
+                  final cvData = cvSnap.data;
+                  final cvBase64 = cvData?['data'] as String?;
+                  final cvFileName = cvData?['fileName'] as String?;
 
-                  if (userModel == null)
-                    const Center(child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 40),
-                      child: CircularProgressIndicator(),
-                    ))
-                  else if (!_hasEnoughProfile(userModel))
-                    _IncompleteProfileCard(isDark: isDark)
-                  else
-                    _SuggestionsPanel(
-                      userModel: userModel,
-                      internships: internships,
-                      isDark: isDark,
-                    ),
-                ],
+                  return ListView(
+                    padding: const EdgeInsets.all(20),
+                    children: [
+                      _Header(isDark: isDark),
+                      const SizedBox(height: 20),
+
+                      if (userModel == null)
+                        const Center(child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 40),
+                          child: CircularProgressIndicator(),
+                        ))
+                      else if (!_hasEnoughProfile(userModel) && cvBase64 == null)
+                        _IncompleteProfileCard(isDark: isDark)
+                      else
+                        _SuggestionsPanel(
+                          userModel: userModel,
+                          internships: internships,
+                          isDark: isDark,
+                          cvBase64: cvBase64,
+                          cvFileName: cvFileName,
+                        ),
+                    ],
+                  );
+                },
               );
             },
           );
@@ -127,8 +141,9 @@ class _IncompleteProfileCard extends StatelessWidget {
               style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
           Text(
-            'Fill in your bio, education, experience, and skills in your profile '
-                'so the AI can suggest internships that actually fit you.',
+            'Fill in your bio, education, experience, and skills — or upload '
+                'a CV PDF — in your profile so the AI can suggest internships '
+                'that actually fit you.',
             textAlign: TextAlign.center,
             style: AppTextStyles.bodySmall.copyWith(
               color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
@@ -157,16 +172,21 @@ class _SuggestionsPanel extends StatelessWidget {
   final UserModel userModel;
   final List<InternshipModel> internships;
   final bool isDark;
+  final String? cvBase64;
+  final String? cvFileName;
   const _SuggestionsPanel({
     required this.userModel,
     required this.internships,
     required this.isDark,
+    this.cvBase64,
+    this.cvFileName,
   });
 
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<InternshipViewModel>();
     final hasResult = vm.aiSuggestionResult != null;
+    final hasCv = cvBase64 != null && cvBase64!.isNotEmpty;
 
     return Container(
       width: double.infinity,
@@ -181,9 +201,43 @@ class _SuggestionsPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Transparency: shows exactly what the AI will actually read,
+          // since the old version silently ignored an uploaded CV.
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: (hasCv ? AppColors.success : AppColors.warning).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(hasCv ? Icons.picture_as_pdf_rounded : Icons.text_snippet_outlined,
+                    size: 14, color: hasCv ? AppColors.success : AppColors.warning),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    hasCv
+                        ? 'Reading your uploaded CV (${cvFileName ?? 'PDF'})'
+                        : 'No CV uploaded — using profile text only',
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: hasCv ? AppColors.success : AppColors.warning,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
           if (!hasResult && !vm.isAiSuggestionLoading) ...[
             Text(
-              'Ready when you are — the AI will read your bio, education, '
+              hasCv
+                  ? 'Ready when you are — the AI will read your uploaded CV directly '
+                  'and match it against the '
+                  '${internships.length} internship${internships.length == 1 ? '' : 's'} currently open.'
+                  : 'Ready when you are — the AI will read your bio, education, '
                   'experience, and skills, and match them against the '
                   '${internships.length} internship${internships.length == 1 ? '' : 's'} currently open.',
               style: AppTextStyles.bodyMedium.copyWith(
@@ -199,6 +253,7 @@ class _SuggestionsPanel extends StatelessWidget {
                     : () => context.read<InternshipViewModel>().getAISuggestionsForUser(
                   user: userModel,
                   internships: internships,
+                  cvBase64: cvBase64,
                 ),
                 icon: const Icon(Iconsax.magic_star, size: 18),
                 label: Text(internships.isEmpty ? 'No internships open right now' : 'Get my suggestions'),
@@ -221,14 +276,18 @@ class _SuggestionsPanel extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                child: Text('Matching your profile against open roles...',
-                    style: AppTextStyles.bodyMedium.copyWith(color: _kAiAccent)),
+                  child: Text('Matching your profile against open roles...',
+                      style: AppTextStyles.bodyMedium.copyWith(color: _kAiAccent)),
                 )
-                  ],
+              ],
             ),
           ] else ...[
             Text(
-              vm.aiSuggestionResult!,
+              vm.aiSuggestionResult!
+                  .replaceAll('**', '')
+                  .replaceAll('## ', '')
+                  .replaceAll('# ', '')
+                  .replaceAll('* ', '• '),
               style: AppTextStyles.bodyMedium.copyWith(
                 color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                 height: 1.6,
@@ -239,6 +298,7 @@ class _SuggestionsPanel extends StatelessWidget {
               onPressed: () => context.read<InternshipViewModel>().getAISuggestionsForUser(
                 user: userModel,
                 internships: internships,
+                cvBase64: cvBase64,
               ),
               icon: const Icon(Icons.refresh_rounded, size: 16),
               label: const Text('Refresh suggestions'),
