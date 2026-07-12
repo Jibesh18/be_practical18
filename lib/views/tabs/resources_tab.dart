@@ -75,7 +75,7 @@ class _ResourcesTabState extends State<ResourcesTab> {
                       style: AppTextStyles.headlineMedium),
                   const SizedBox(height: 4),
                   Text(
-                    'Curated courses with free certificates',
+                    'Upgrade your skills with free certificates',
                     style: AppTextStyles.bodyMedium.copyWith(
                       color: isDark
                           ? AppColors.darkTextSecondary

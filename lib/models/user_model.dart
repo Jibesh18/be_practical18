@@ -11,7 +11,8 @@ class UserModel {
   final String photoURL;
   final String education;
   final String experience;
-  final String cvUrl;
+  final bool cvUploaded;
+  final String cvFileName;
   final String linkedinUrl;
   final String githubUrl;
   final DateTime createdAt;
@@ -27,7 +28,8 @@ class UserModel {
     this.photoURL = '',
     this.education = '',
     this.experience = '',
-    this.cvUrl = '',
+    this.cvUploaded = false,
+    this.cvFileName = '',
     this.linkedinUrl = '',
     this.githubUrl = '',
     required this.createdAt,
@@ -45,7 +47,8 @@ class UserModel {
       photoURL: map['photoURL'] ?? '',
       education: map['education'] ?? '',
       experience: map['experience'] ?? '',
-      cvUrl: map['cvUrl'] ?? '',
+      cvUploaded: map['cvUploaded'] ?? false,
+      cvFileName: map['cvFileName'] ?? '',
       linkedinUrl: map['linkedinUrl'] ?? '',
       githubUrl: map['githubUrl'] ?? '',
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -64,7 +67,8 @@ class UserModel {
       'photoURL': photoURL,
       'education': education,
       'experience': experience,
-      'cvUrl': cvUrl,
+      'cvUploaded': cvUploaded,
+      'cvFileName': cvFileName,
       'linkedinUrl': linkedinUrl,
       'githubUrl': githubUrl,
       'createdAt': FieldValue.serverTimestamp(),
@@ -78,7 +82,8 @@ class UserModel {
     String? photoURL,
     String? education,
     String? experience,
-    String? cvUrl,
+    bool? cvUploaded,
+    String? cvFileName,
     String? linkedinUrl,
     String? githubUrl,
   }) {
@@ -93,12 +98,14 @@ class UserModel {
       photoURL: photoURL ?? this.photoURL,
       education: education ?? this.education,
       experience: experience ?? this.experience,
-      cvUrl: cvUrl ?? this.cvUrl,
+      cvUploaded: cvUploaded ?? this.cvUploaded,
+      cvFileName: cvFileName ?? this.cvFileName,
       linkedinUrl: linkedinUrl ?? this.linkedinUrl,
       githubUrl: githubUrl ?? this.githubUrl,
       createdAt: createdAt,
     );
   }
+
   bool get isProfileComplete =>
       bio.isNotEmpty && education.isNotEmpty && skills.isNotEmpty;
 }

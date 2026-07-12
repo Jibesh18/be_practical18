@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
+import 'dart:convert';
 
 class UserService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -49,4 +50,38 @@ class UserService {
         .snapshots()
         .map((doc) => doc.exists ? UserModel.fromMap(doc.data()!, doc.id) : null);
   }
-}
+  static const int maxCvBytes = 700 * 1024; // ~700KB raw -> ~950KB base64, safely under Firestore's 1MB doc cap
+
+  Future<void> uploadCvBase64({
+    required String uid,
+    required String base64Data,
+    required String fileName,
+  }) async {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('private')
+        .doc('cv')
+        .set({
+      'data': base64Data,
+      'fileName': fileName,
+      'uploadedAt': FieldValue.serverTimestamp(),
+    });
+
+    await _firestore.collection('users').doc(uid).update({
+      'cvUploaded': true,
+      'cvFileName': fileName,
+    });
+  }
+
+  Future<Map<String, dynamic>?> fetchCvData(String uid) async {
+    final doc = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('private')
+        .doc('cv')
+        .get();
+    return doc.exists ? doc.data() : null;
+  }
+
+  }
