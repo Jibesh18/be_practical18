@@ -22,297 +22,371 @@ class ProfileTab extends StatelessWidget {
     final user = authVM.currentUser;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // FIXED: ProfileTab used to return a bare StreamBuilder/ListView with
+    // no Scaffold. That worked fine while Profile lived inside the bottom
+    // nav's IndexedStack (borrowing that screen's Scaffold), but now that
+    // it's reached via Navigator.push (from the home avatar, the AI banner,
+    // and the incomplete-profile dialog), there's no Material ancestor —
+    // so TextFormField/buttons inside (edit sheet, CV upload, logout, etc.)
+    // would crash, and there was no back button either. Wrapping in a
+    // Scaffold with a minimal transparent AppBar fixes both.
     if (user == null) {
-      return const Center(child: Text('Not logged in'));
+      return Scaffold(
+        backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+        appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
+        body: const Center(child: Text('Not logged in')),
+      );
     }
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: StreamBuilder<UserModel?>(
-          stream: authVM.watchUserProfile(user.uid),
-          builder: (context, snap) {
-            final userModel = snap.data;
+      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+      body: StreamBuilder<UserModel?>(
+        stream: authVM.watchUserProfile(user.uid),
+        builder: (context, snap) {
+          final u = snap.data;
+          final name = user.displayName ?? 'User';
+          final email = user.email ?? '';
+          final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+          final profilePct = _profilePercent(u);
 
-            return ListView(
-              padding: const EdgeInsets.all(20),
-              children: [
-                // ── Avatar + name ──
-                Center(
-                  child: Column(
-                    children: [
-                      CircleAvatar(
-                        radius: 44,
-                        backgroundColor: AppColors.primary.withOpacity(0.12),
-                        child: Text(
-                          user.displayName?.isNotEmpty == true
-                              ? user.displayName![0].toUpperCase()
-                              : '?',
-                          style: AppTextStyles.headlineLarge
-                              .copyWith(color: AppColors.primary),
+          return ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              // ── Hero header ──────────────────────────────────────────
+              Container(
+                color: isDark ? AppColors.darkSurface : Colors.white,
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+                    child: Column(
+                      children: [
+                        // Avatar
+                        Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 48,
+                              backgroundColor: AppColors.primary.withOpacity(0.12),
+                              child: Text(initial,
+                                  style: AppTextStyles.displayLarge.copyWith(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w900,
+                                  )),
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: GestureDetector(
+                                onTap: () => _showEditProfileSheet(context, u, isDark),
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 2),
+                                  ),
+                                  child: const Icon(Icons.edit_rounded, size: 14, color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        user.displayName ?? 'User',
-                        style: AppTextStyles.titleLarge
-                            .copyWith(fontWeight: FontWeight.w800),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        user.email ?? '',
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: isDark
-                              ? AppColors.darkTextSecondary
-                              : AppColors.lightTextSecondary,
+                        const SizedBox(height: 14),
+                        Text(name, style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.w900)),
+                        const SizedBox(height: 4),
+                        Text(email, style: AppTextStyles.bodySmall.copyWith(
+                          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                        )),
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                          ),
+                          child: Text('Intern Seeker', style: AppTextStyles.labelSmall.copyWith(
+                            color: AppColors.primary, fontWeight: FontWeight.w700,
+                          )),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                              color: AppColors.primary.withOpacity(0.3)),
-                        ),
-                        child: Text(
-                          'Intern Seeker',
-                          style: AppTextStyles.labelSmall.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w700,
+                        const SizedBox(height: 20),
+
+                        // Profile completion bar
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.darkCard : AppColors.lightBg,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightDivider),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text('Profile completion',
+                                        style: AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w600)),
+                                  ),
+                                  Text('$profilePct%',
+                                      style: AppTextStyles.labelMedium.copyWith(
+                                        color: profilePct == 100 ? AppColors.success : AppColors.primary,
+                                        fontWeight: FontWeight.w700,
+                                      )),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: profilePct / 100,
+                                  minHeight: 6,
+                                  backgroundColor: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    profilePct == 100 ? AppColors.success : AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                              if (profilePct < 100) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Add ${_missingFields(u)} to improve your match score',
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
+              ),
 
-                const SizedBox(height: 24),
+              const SizedBox(height: 12),
 
-                // ── Bio ──
-                if (userModel?.bio.isNotEmpty == true) ...[
-                  _SectionLabel(label: 'About Me', isDark: isDark),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkSurface : Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isDark
-                            ? AppColors.darkBorder
-                            : AppColors.lightBorder,
-                      ),
+              // ── Profile sections ─────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // About Me
+                    _ProfileCard(
+                      title: 'About Me',
+                      icon: Iconsax.user,
+                      isDark: isDark,
+                      isEmpty: u?.bio.isEmpty ?? true,
+                      emptyLabel: 'Add a bio to tell employers about yourself',
+                      onEdit: () => _showEditProfileSheet(context, u, isDark),
+                      child: u?.bio.isNotEmpty == true
+                          ? Text(u!.bio, style: AppTextStyles.bodyMedium.copyWith(
+                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                        height: 1.6,
+                      ))
+                          : null,
                     ),
-                    child: Text(
-                      userModel!.bio,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: isDark
-                            ? AppColors.darkTextSecondary
-                            : AppColors.lightTextSecondary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
 
-                // ── Education ──
-                if (userModel?.education.isNotEmpty == true) ...[
-                  _SectionLabel(label: 'Education', isDark: isDark),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkSurface : Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Iconsax.book, color: AppColors.primary, size: 20),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            userModel!.education,
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              color: isDark
-                                  ? AppColors.darkTextSecondary
-                                  : AppColors.lightTextSecondary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-
-                // ── Experience ──
-                if (userModel?.experience.isNotEmpty == true) ...[
-                  _SectionLabel(label: 'Experience', isDark: isDark),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkSurface : Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Iconsax.briefcase, color: AppColors.primary, size: 20),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            userModel!.experience,
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              color: isDark
-                                  ? AppColors.darkTextSecondary
-                                  : AppColors.lightTextSecondary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-
-                // ── Skills ──
-                if (userModel?.skills.isNotEmpty == true) ...[
-                  _SectionLabel(label: 'My Skills', isDark: isDark),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: userModel!.skills
-                        .map((s) => Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: AppColors.primary.withOpacity(0.25),
-                        ),
-                      ),
-                      child: Text(
-                        s,
-                        style: AppTextStyles.labelSmall.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ))
-                        .toList(),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-
-                // ── Links (LinkedIn / GitHub / CV) ──
-                if ((userModel?.linkedinUrl.isNotEmpty == true) ||
-                    (userModel?.githubUrl.isNotEmpty == true) ||
-                    (userModel?.cvUploaded == true)) ...[
-                  _SectionLabel(label: 'Links', isDark: isDark),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      if (userModel!.linkedinUrl.isNotEmpty)
-                        _SocialButton(
-                          icon: Iconsax.link,
-                          label: 'LinkedIn',
-                          url: userModel.linkedinUrl,
-                        ),
-                      if (userModel.linkedinUrl.isNotEmpty && userModel.githubUrl.isNotEmpty)
-                        const SizedBox(width: 12),
-                      if (userModel.githubUrl.isNotEmpty)
-                        _SocialButton(
-                          icon: Iconsax.code,
-                          label: 'GitHub',
-                          url: userModel.githubUrl,
-                        ),
-                    ],
-                  ),
-                  if (userModel.cvUploaded) ...[
                     const SizedBox(height: 12),
-                    GestureDetector(
-                      onTap: () => _viewCv(context, userModel.uid),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkSurface : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+
+                    // Education
+                    _ProfileCard(
+                      title: 'Education',
+                      icon: Iconsax.book,
+                      isDark: isDark,
+                      isEmpty: u?.education.isEmpty ?? true,
+                      emptyLabel: 'Add your education details',
+                      onEdit: () => _showEditProfileSheet(context, u, isDark),
+                      child: u?.education.isNotEmpty == true
+                          ? Row(
+                        children: [
+                          const Icon(Iconsax.book, size: 18, color: AppColors.primary),
+                          const SizedBox(width: 10),
+                          Expanded(child: Text(u!.education, style: AppTextStyles.bodyMedium.copyWith(
+                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                          ))),
+                        ],
+                      )
+                          : null,
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Experience
+                    _ProfileCard(
+                      title: 'Experience',
+                      icon: Iconsax.briefcase,
+                      isDark: isDark,
+                      isEmpty: u?.experience.isEmpty ?? true,
+                      emptyLabel: 'Add your experience',
+                      onEdit: () => _showEditProfileSheet(context, u, isDark),
+                      child: u?.experience.isNotEmpty == true
+                          ? Row(
+                        children: [
+                          const Icon(Iconsax.briefcase, size: 18, color: AppColors.primary),
+                          const SizedBox(width: 10),
+                          Expanded(child: Text(u!.experience, style: AppTextStyles.bodyMedium.copyWith(
+                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                          ))),
+                        ],
+                      )
+                          : null,
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Skills
+                    _ProfileCard(
+                      title: 'Skills',
+                      icon: Iconsax.code,
+                      isDark: isDark,
+                      isEmpty: u?.skills.isEmpty ?? true,
+                      emptyLabel: 'Add your skills to get better AI matches',
+                      onEdit: () => _showEditProfileSheet(context, u, isDark),
+                      child: u?.skills.isNotEmpty == true
+                          ? Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: u!.skills.map((s) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primarySurface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                          ),
+                          child: Text(s, style: const TextStyle(
+                            color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600,
+                          )),
+                        )).toList(),
+                      )
+                          : null,
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Links & CV
+                    if ((u?.linkedinUrl.isNotEmpty == true) ||
+                        (u?.githubUrl.isNotEmpty == true) ||
+                        (u?.cvUploaded == true))
+                      _ProfileCard(
+                        title: 'Links & CV',
+                        icon: Iconsax.link,
+                        isDark: isDark,
+                        isEmpty: false,
+                        emptyLabel: '',
+                        onEdit: () => _showEditProfileSheet(context, u, isDark),
+                        child: Column(
                           children: [
-                            const Icon(Iconsax.document_text, size: 18, color: AppColors.primary),
-                            const SizedBox(width: 8),
-                            Text('View CV / Resume', style: AppTextStyles.labelMedium),
+                            if (u!.linkedinUrl.isNotEmpty)
+                              _LinkTile(icon: Iconsax.link, label: 'LinkedIn', url: u.linkedinUrl, isDark: isDark),
+                            if (u.githubUrl.isNotEmpty) ...[
+                              if (u.linkedinUrl.isNotEmpty) const SizedBox(height: 8),
+                              _LinkTile(icon: Iconsax.code, label: 'GitHub', url: u.githubUrl, isDark: isDark),
+                            ],
+                            if (u.cvUploaded) ...[
+                              const SizedBox(height: 8),
+                              GestureDetector(
+                                onTap: () => _viewCv(context, u.uid),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primarySurface,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Iconsax.document_text, size: 18, color: AppColors.primary),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          u.cvFileName.isNotEmpty ? u.cvFileName : 'View CV / Resume',
+                                          style: AppTextStyles.labelMedium.copyWith(color: AppColors.primary),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const Icon(Icons.open_in_new_rounded, size: 14, color: AppColors.primary),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
+
+                    const SizedBox(height: 20),
+
+                    // Settings tiles
+                    _SettingsTile(
+                      icon: Iconsax.edit,
+                      label: 'Edit Profile',
+                      isDark: isDark,
+                      onTap: () => _showEditProfileSheet(context, u, isDark),
                     ),
+                    _SettingsTile(
+                      icon: Iconsax.info_circle,
+                      label: 'Help & Support',
+                      isDark: isDark,
+                      onTap: () {},
+                    ),
+                    const SizedBox(height: 4),
+                    Divider(color: isDark ? AppColors.darkBorder : AppColors.lightDivider),
+                    const SizedBox(height: 4),
+                    _SettingsTile(
+                      icon: Iconsax.logout,
+                      label: 'Logout',
+                      isDark: isDark,
+                      color: AppColors.error,
+                      onTap: () async {
+                        await authVM.logout();
+                        if (!context.mounted) return;
+                        Navigator.of(context).popUntil((r) => r.isFirst);
+                      },
+                    ),
+                    const SizedBox(height: 40),
                   ],
-                  const SizedBox(height: 24),
-                ],
-
-                // ── Settings ──
-                _ProfileTile(
-                  icon: Iconsax.edit,
-                  label: 'Edit Profile',
-                  isDark: isDark,
-                  onTap: () => _showEditProfileSheet(
-                      context, userModel, isDark),
                 ),
-
-                _ProfileTile(
-                  icon: Iconsax.info_circle,
-                  label: 'Help & Support',
-                  isDark: isDark,
-                  onTap: () {},
-                ),
-
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Divider(),
-                ),
-
-                _ProfileTile(
-                  icon: Iconsax.logout,
-                  label: 'Logout',
-                  isDark: isDark,
-                  color: AppColors.error,
-                  onTap: () async {
-                    await authVM.logout();
-                    if (!context.mounted) return;
-                    Navigator.of(context).popUntil((route) => route.isFirst);
-                  },
-                ),
-
-                const SizedBox(height: 20),
-              ],
-            );
-          },
-        ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  void _showEditProfileSheet(
-      BuildContext context, UserModel? userModel, bool isDark) {
+  int _profilePercent(UserModel? u) {
+    if (u == null) return 0;
+    int score = 0;
+    if (u.name.isNotEmpty) score += 20;
+    if (u.bio.isNotEmpty) score += 20;
+    if (u.skills.isNotEmpty) score += 20;
+    if (u.education.isNotEmpty) score += 20;
+    if (u.experience.isNotEmpty) score += 20;
+    return score;
+  }
+
+  String _missingFields(UserModel? u) {
+    if (u == null) return 'your details';
+    final missing = <String>[];
+    if (u.bio.isEmpty) missing.add('bio');
+    if (u.skills.isEmpty) missing.add('skills');
+    if (u.education.isEmpty) missing.add('education');
+    if (u.experience.isEmpty) missing.add('experience');
+    if (missing.isEmpty) return '';
+    return missing.take(2).join(' & ');
+  }
+
+  void _showEditProfileSheet(BuildContext context, UserModel? userModel, bool isDark) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -322,7 +396,7 @@ class ProfileTab extends StatelessWidget {
   }
 }
 
-// ── Open a stored CV (decode base64 -> temp file -> open) ──────────────────────
+// ── View CV ───────────────────────────────────────────────────────────────────
 
 Future<void> _viewCv(BuildContext context, String uid) async {
   final authVM = context.read<AuthViewModel>();
@@ -382,58 +456,37 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
 
   @override
   void dispose() {
-    _nameC.dispose();
-    _bioC.dispose();
-    _skillC.dispose();
-    _educationC.dispose();
-    _experienceC.dispose();
-    _linkedinC.dispose();
-    _githubC.dispose();
+    for (final c in [_nameC, _bioC, _skillC, _educationC, _experienceC, _linkedinC, _githubC]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
   void _addSkill() {
     final s = _skillC.text.trim();
     if (s.isEmpty || _skills.contains(s)) return;
-    setState(() {
-      _skills.add(s);
-      _skillC.clear();
-    });
+    setState(() { _skills.add(s); _skillC.clear(); });
   }
 
   Future<void> _pickAndUploadCV() async {
     final authVM = context.read<AuthViewModel>();
     final user = authVM.currentUser;
     if (user == null) return;
-
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
-    );
+    final result = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ['pdf']);
     if (result == null || result.files.single.path == null) return;
-
     setState(() => _isUploadingCV = true);
     try {
       final file = File(result.files.single.path!);
       await authVM.uploadCV(uid: user.uid, file: file);
-      setState(() {
-        _cvUploaded = true;
-        _cvFileName = result.files.single.name;
-      });
+      setState(() { _cvUploaded = true; _cvFileName = result.files.single.name; });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('CV uploaded!'),
-          backgroundColor: AppColors.success,
-        ),
+        const SnackBar(content: Text('CV uploaded!'), backgroundColor: AppColors.success),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: AppColors.error,
-        ),
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: AppColors.error),
       );
     } finally {
       if (mounted) setState(() => _isUploadingCV = false);
@@ -444,7 +497,6 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     final authVM = context.read<AuthViewModel>();
     final user = authVM.currentUser;
     if (user == null) return;
-
     setState(() => _isLoading = true);
     try {
       await authVM.updateProfile(
@@ -460,17 +512,11 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
       if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile updated!'),
-          backgroundColor: AppColors.success,
-        ),
+        const SnackBar(content: Text('Profile updated!'), backgroundColor: AppColors.success),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to update profile'),
-          backgroundColor: AppColors.error,
-        ),
+        const SnackBar(content: Text('Failed to update profile'), backgroundColor: AppColors.error),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -480,7 +526,6 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
       maxChildSize: 0.97,
@@ -493,26 +538,19 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
         child: Column(
           children: [
             const SizedBox(height: 12),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+            Container(width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                  borderRadius: BorderRadius.circular(2),
+                )),
             const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  Text('Edit Profile',
-                      style: AppTextStyles.headlineMedium.copyWith(fontWeight: FontWeight.w800)),
+                  Text('Edit Profile', style: AppTextStyles.headlineMedium.copyWith(fontWeight: FontWeight.w800)),
                   const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.pop(context),
-                  ),
+                  IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context)),
                 ],
               ),
             ),
@@ -522,52 +560,14 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                 controller: scrollC,
                 padding: const EdgeInsets.all(20),
                 children: [
-                  Text('Full Name', style: AppTextStyles.labelMedium),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _nameC,
-                    decoration: const InputDecoration(
-                      hintText: 'Your full name',
-                      prefixIcon: Icon(Iconsax.user, size: 20),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
+                  _Field(label: 'Full Name', controller: _nameC, hint: 'Your full name', icon: Iconsax.user),
+                  _Field(label: 'Bio', controller: _bioC, hint: 'Tell employers about yourself...', maxLines: 3),
+                  _Field(label: 'Education', controller: _educationC,
+                      hint: 'e.g. BSc Computer Science, TU, 2022–2026', icon: Iconsax.book, maxLines: 2),
+                  _Field(label: 'Experience', controller: _experienceC,
+                      hint: 'Any projects, internships, or work experience', icon: Iconsax.briefcase, maxLines: 2),
 
-                  Text('Bio', style: AppTextStyles.labelMedium),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _bioC,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      hintText: 'Tell employers about yourself, your goals, and experience...',
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  Text('Education', style: AppTextStyles.labelMedium),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _educationC,
-                    maxLines: 2,
-                    decoration: const InputDecoration(
-                      hintText: 'e.g. BSc Computer Science, Tribhuvan University, 2022–2026',
-                      prefixIcon: Icon(Iconsax.book, size: 20),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  Text('Experience', style: AppTextStyles.labelMedium),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _experienceC,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      hintText: 'e.g. Frontend Intern at ABC Tech, Jun–Aug 2025',
-                      prefixIcon: Icon(Iconsax.briefcase, size: 20),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
+                  // Skills
                   Text('Skills', style: AppTextStyles.labelMedium),
                   const SizedBox(height: 8),
                   Row(
@@ -575,57 +575,47 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                       Expanded(
                         child: TextFormField(
                           controller: _skillC,
-                          decoration: const InputDecoration(hintText: 'Add a skill'),
+                          decoration: const InputDecoration(hintText: 'e.g. Flutter, Python, Figma'),
                           onFieldSubmitted: (_) => _addSkill(),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Iconsax.add_circle),
-                        color: AppColors.primary,
+                      ElevatedButton(
                         onPressed: _addSkill,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          elevation: 0,
+                        ),
+                        child: const Text('Add'),
                       ),
                     ],
                   ),
                   if (_skills.isNotEmpty) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _skills
-                          .map((s) => Chip(
+                      spacing: 8, runSpacing: 8,
+                      children: _skills.map((s) => Chip(
                         label: Text(s),
                         onDeleted: () => setState(() => _skills.remove(s)),
-                      ))
-                          .toList(),
+                        backgroundColor: AppColors.primarySurface,
+                        side: BorderSide(color: AppColors.primary.withOpacity(0.2)),
+                        labelStyle: const TextStyle(color: AppColors.primary, fontSize: 12),
+                      )).toList(),
                     ),
                   ],
                   const SizedBox(height: 20),
 
-                  Text('LinkedIn URL', style: AppTextStyles.labelMedium),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _linkedinC,
-                    keyboardType: TextInputType.url,
-                    decoration: const InputDecoration(
-                      hintText: 'https://linkedin.com/in/yourname',
-                      prefixIcon: Icon(Iconsax.link, size: 20),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
+                  _Field(label: 'LinkedIn URL', controller: _linkedinC,
+                      hint: 'https://linkedin.com/in/yourname', icon: Iconsax.link,
+                      keyboardType: TextInputType.url),
+                  _Field(label: 'GitHub URL', controller: _githubC,
+                      hint: 'https://github.com/yourusername', icon: Iconsax.code,
+                      keyboardType: TextInputType.url),
 
-                  Text('GitHub URL', style: AppTextStyles.labelMedium),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _githubC,
-                    keyboardType: TextInputType.url,
-                    decoration: const InputDecoration(
-                      hintText: 'https://github.com/yourusername',
-                      prefixIcon: Icon(Iconsax.code, size: 20),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
+                  // CV Upload
                   Text('CV / Resume (PDF)', style: AppTextStyles.labelMedium),
                   const SizedBox(height: 8),
                   Container(
@@ -651,26 +641,22 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                           ),
                         ),
                         _isUploadingCV
-                            ? const SizedBox(
-                            width: 20, height: 20,
+                            ? const SizedBox(width: 20, height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2))
                             : TextButton(
                           onPressed: _pickAndUploadCV,
-                          child: Text(_cvUploaded ? 'Replace' : 'Upload'),
+                          child: Text(_cvUploaded ? 'Replace' : 'Upload',
+                              style: const TextStyle(color: AppColors.primary)),
                         ),
                       ],
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      'PDF only, under 700KB',
-                      style: AppTextStyles.labelSmall.copyWith(
-                        color: isDark
-                            ? AppColors.darkTextSecondary
-                            : AppColors.lightTextSecondary,
-                      ),
-                    ),
+                    child: Text('PDF only, under 700KB',
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                        )),
                   ),
                   const SizedBox(height: 32),
 
@@ -679,13 +665,15 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _save,
                       style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 0,
                       ),
                       child: _isLoading
-                          ? const SizedBox(
-                          width: 20, height: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
+                          ? const SizedBox(width: 20, height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                           : const Text('Save Changes'),
                     ),
                   ),
@@ -700,116 +688,174 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Reusable widgets ──────────────────────────────────────────────────────────
 
-class _SectionLabel extends StatelessWidget {
-  final String label;
-  final bool isDark;
-  const _SectionLabel({required this.label, required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 16,
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(label,
-            style:
-            AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w700)),
-      ],
-    );
-  }
-}
-
-class _SocialButton extends StatelessWidget {
+class _ProfileCard extends StatelessWidget {
+  final String title;
   final IconData icon;
-  final String label;
-  final String url;
-  const _SocialButton({
+  final bool isDark;
+  final bool isEmpty;
+  final String emptyLabel;
+  final VoidCallback onEdit;
+  final Widget? child;
+
+  const _ProfileCard({
+    required this.title,
     required this.icon,
-    required this.label,
-    required this.url,
+    required this.isDark,
+    required this.isEmpty,
+    required this.emptyLabel,
+    required this.onEdit,
+    this.child,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () async {
-          final uri = Uri.tryParse(url);
-          if (uri != null && await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          }
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.darkSurface : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Icon(icon, size: 18, color: AppColors.primary),
-              const SizedBox(width: 8),
-              Text(label, style: AppTextStyles.labelMedium),
+              Container(
+                width: 32, height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 16, color: AppColors.primary),
+              ),
+              const SizedBox(width: 10),
+              Text(title, style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w700)),
+              const Spacer(),
+              GestureDetector(
+                onTap: onEdit,
+                child: Text('Edit', style: AppTextStyles.labelSmall.copyWith(color: AppColors.primary)),
+              ),
             ],
           ),
+          if (child != null) ...[
+            const SizedBox(height: 12),
+            child!,
+          ] else if (isEmpty) ...[
+            const SizedBox(height: 10),
+            Text(emptyLabel, style: AppTextStyles.bodySmall.copyWith(
+              color: isDark ? AppColors.darkTextTertiary : AppColors.lightTextTertiary,
+            )),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LinkTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String url;
+  final bool isDark;
+
+  const _LinkTile({required this.icon, required this.label, required this.url, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () async {
+        final uri = Uri.tryParse(url);
+        if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkCard : AppColors.lightBg,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightDivider),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: AppColors.primary),
+            const SizedBox(width: 10),
+            Text(label, style: AppTextStyles.labelMedium),
+            const Spacer(),
+            const Icon(Icons.open_in_new_rounded, size: 14, color: AppColors.primary),
+          ],
         ),
       ),
     );
   }
 }
 
-class _ProfileTile extends StatelessWidget {
+class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
   final bool isDark;
   final Color? color;
 
-  const _ProfileTile({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    required this.isDark,
-    this.color,
-  });
+  const _SettingsTile({required this.icon, required this.label, required this.onTap, required this.isDark, this.color});
 
   @override
   Widget build(BuildContext context) {
-    final c =
-        color ?? (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary);
-
+    final c = color ?? (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-        ),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
       ),
       child: ListTile(
         leading: Icon(icon, color: c, size: 20),
-        title: Text(label,
-            style: AppTextStyles.bodyMedium
-                .copyWith(color: c, fontWeight: FontWeight.w600)),
-        trailing: Icon(Icons.chevron_right_rounded,
-            color: c.withOpacity(0.4), size: 20),
+        title: Text(label, style: AppTextStyles.bodyMedium.copyWith(color: c, fontWeight: FontWeight.w600)),
+        trailing: Icon(Icons.chevron_right_rounded, color: c.withOpacity(0.4), size: 20),
         onTap: onTap,
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
+    );
+  }
+}
+
+class _Field extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final String hint;
+  final IconData? icon;
+  final int maxLines;
+  final TextInputType? keyboardType;
+
+  const _Field({
+    required this.label,
+    required this.controller,
+    required this.hint,
+    this.icon,
+    this.maxLines = 1,
+    this.keyboardType,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AppTextStyles.labelMedium),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          maxLines: maxLines,
+          keyboardType: keyboardType,
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixIcon: icon != null ? Icon(icon, size: 20) : null,
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
     );
   }
 }

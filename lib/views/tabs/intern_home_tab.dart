@@ -1,3 +1,4 @@
+import 'package:be_practical18/views/tabs/profile_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:provider/provider.dart';
@@ -73,7 +74,10 @@ class HomeTab extends StatelessWidget {
                       ),
                       // Avatar circle
                       GestureDetector(
-                        onTap: () => context.read<DashboardViewModel>().setIndex(4),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ProfileTab()),
+                        ),
                         child: CircleAvatar(
                           radius: 24,
                           backgroundColor: AppColors.primary.withOpacity(0.12),
@@ -148,7 +152,7 @@ class HomeTab extends StatelessWidget {
 
                   const SizedBox(height: 20),
 
-                  // Stats row â€” Applied / Pending / Accepted / Profile %
+                  // Stats row — Applied / Pending / Accepted / Profile %
                   StreamBuilder<List<ApplicationModel>>(
                     stream: user != null
                         ? context.read<InternshipViewModel>().getMyApplications(user.uid)
@@ -202,7 +206,10 @@ class HomeTab extends StatelessWidget {
                           (profile.bio.isNotEmpty || profile.skills.isNotEmpty || profile.education.isNotEmpty);
 
                       return GestureDetector(
-                        onTap: () => context.read<DashboardViewModel>().setIndex(4),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ProfileTab()),
+                        ),
                         child: Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -269,7 +276,7 @@ class HomeTab extends StatelessWidget {
           ),
         ),
 
-        // â”€â”€ Closing Soon â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Closing soon ─────────────────────────────────────────────────────
         SliverToBoxAdapter(
           child: StreamBuilder<List<InternshipModel>>(
             stream: internVM.allInternships,
@@ -314,7 +321,7 @@ class HomeTab extends StatelessWidget {
           ),
         ),
 
-        // â”€â”€ Latest Openings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Latest openings ──────────────────────────────────────────────────
         SliverToBoxAdapter(
           child: StreamBuilder<List<InternshipModel>>(
             stream: internVM.allInternships,
@@ -345,7 +352,7 @@ class HomeTab extends StatelessWidget {
           ),
         ),
 
-        // â”€â”€ Community highlights â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Community highlights ─────────────────────────────────────────────
         SliverToBoxAdapter(
           child: StreamBuilder<List<CommunityPost>>(
             stream: communityVM.posts,
@@ -389,7 +396,9 @@ class HomeTab extends StatelessWidget {
   }
 }
 
-// â”€â”€ Community Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Shared widgets used by HomeTab below ──────────────────────────────────
+// (Not a "Community Tab" — just the small building-block widgets this file
+// uses: stat boxes, section headers, cards, etc.)
 
 class _StatBox extends StatelessWidget {
   final String value;
@@ -572,7 +581,7 @@ class _ListCardState extends State<_ListCard> {
     if (!mounted) return;
     setState(() { _applying = false; if (success) _hasApplied = true; });
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(success ? 'Applied! ðŸŽ‰' : vm.applyError ?? 'Error'),
+      content: Text(success ? 'Applied! 🎉' : vm.applyError ?? 'Error'),
       backgroundColor: success ? AppColors.success : AppColors.error,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -623,7 +632,7 @@ class _ListCardState extends State<_ListCard> {
                       style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w700),
                       maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 3),
-                  Text('${widget.internship.company} Â· ${widget.internship.location}',
+                  Text('${widget.internship.company} · ${widget.internship.location}',
                       style: AppTextStyles.bodySmall.copyWith(
                         color: widget.isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                       ),
@@ -708,7 +717,7 @@ class _CommunityHighlightTile extends StatelessWidget {
                 maxLines: 2, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 8),
             Text(
-              '${post.answerCount} answer${post.answerCount != 1 ? 's' : ''} Â· ${post.authorName}',
+              '${post.answerCount} answer${post.answerCount != 1 ? 's' : ''} · ${post.authorName}',
               style: AppTextStyles.bodySmall.copyWith(
                 color: isDark ? AppColors.darkTextTertiary : AppColors.lightTextTertiary,
               ),
@@ -733,7 +742,10 @@ void showIncompleteProfileDialog(BuildContext context) {
         ElevatedButton(
           onPressed: () {
             Navigator.pop(context);
-            context.read<DashboardViewModel>().setIndex(4);
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileTab()),
+            );
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
@@ -745,4 +757,3 @@ void showIncompleteProfileDialog(BuildContext context) {
     ),
   );
 }
-

@@ -132,6 +132,10 @@ class InternshipViewModel extends ChangeNotifier {
   Future<void> getAISuggestionsForUser({
     required UserModel user,
     required List<InternshipModel> internships,
+    // Base64 PDF of the user's uploaded CV, fetched via
+    // AuthViewModel.fetchCvData(uid)['data']. Optional — if null, falls
+    // back to the plain-text bio/education/experience/skills summary only.
+    String? cvBase64,
   }) async {
     if (_aiSuggestionLoading) return;
 
@@ -154,18 +158,22 @@ Skills: ${user.skills.isNotEmpty ? user.skills.join(', ') : 'Not provided'}
           'Duration: ${i.duration} | Stipend: ${i.stipend}'
       ).join('\n');
 
+      final hasCv = cvBase64 != null && cvBase64.isNotEmpty;
+
       final prompt = '''
 You are a career advisor helping a student/early-career candidate find internships that fit them.
 
-Candidate profile:
+${hasCv ? 'A PDF of the candidate\'s CV/resume is attached below — read it directly and use its actual content (work history, projects, education, listed skills) as your primary source. The short profile summary below is supplementary context only, not a substitute for the CV.' : 'The candidate has not uploaded a CV file, so base your assessment only on the profile summary below.'}
+
+Candidate profile summary:
 $profileSummary
 
 Currently open internships:
 ${listingsText.isEmpty ? 'No internships are currently open.' : listingsText}
 
-Based on the candidate's education, experience, and skills, provide:
-1. A one-line read on their current level (beginner / intermediate / advanced) based on what's in their profile.
-2. The top 3 internships from the list above that best match them, each with a one-line reason why. If fewer than 3 are a real fit, only list the genuine matches — don't force weak ones. If the list is empty, say so plainly.
+Based on the candidate's ${hasCv ? 'CV and profile' : 'profile'}, provide:
+1. A one-line read on their current level (beginner / intermediate / advanced) based on what's actually in their ${hasCv ? 'CV' : 'profile'}.
+2. The top 3 internships from the list above that best match them, each with a one-line reason why — reference specific skills or experience from their ${hasCv ? 'CV' : 'profile'} where relevant. If fewer than 3 are a real fit, only list the genuine matches — don't force weak ones. If the list is empty, say so plainly.
 3. 2-3 specific skills they could learn next to become a stronger candidate for internships in their field.
 4. One concrete tip to improve their profile or application.
 
@@ -177,10 +185,17 @@ Keep it concise, encouraging, and practical for someone early in their career. U
           'early-career internship seekers. Be concise, encouraging, and '
           'specific — avoid generic advice.';
 
-      final response = await AIService.ask(
+      final response = hasCv
+          ? await AIService.askWithDocument(
+        prompt: prompt,
+        documentBase64: cvBase64,
+        systemPrompt: systemPrompt,
+        maxOutputTokens: 2000,
+      )
+          : await AIService.ask(
         prompt: prompt,
         systemPrompt: systemPrompt,
-        maxOutputTokens: 800,
+        maxOutputTokens: 2000,
       );
 
       _aiSuggestionResult = response;

@@ -1,6 +1,7 @@
 // lib/services/ai_services.dart
 // Single shared service for AI calls — using Google Gemini FREE API tier.
 // Used by: employer_suggestion_tab.dart (AI candidate matching)
+//          intern_ai_suggestions_tab.dart (AI internship matching)
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -21,8 +22,55 @@ class AIService {
   static Future<String> ask({
     required String prompt,
     String? systemPrompt,
-    int maxOutputTokens = 1000,
+    int maxOutputTokens = 2000,
     int maxRetries = 2,
+  }) {
+    return _send(
+      parts: [
+        {'text': prompt}
+      ],
+      systemPrompt: systemPrompt,
+      maxOutputTokens: maxOutputTokens,
+      maxRetries: maxRetries,
+    );
+  }
+
+  /// Same as [ask], but also attaches a document (e.g. an uploaded CV PDF)
+  /// as an inline_data part. Gemini 2.5 Flash can read PDF text/layout
+  /// directly — this is what lets AI suggestions actually see the CV
+  /// someone uploaded, instead of only the plain-text profile fields.
+  ///
+  /// [documentBase64] should be raw base64 (no "data:application/pdf;base64,"
+  /// prefix — strip that if your source includes it).
+  static Future<String> askWithDocument({
+    required String prompt,
+    required String documentBase64,
+    String mimeType = 'application/pdf',
+    String? systemPrompt,
+    int maxOutputTokens = 2000,
+    int maxRetries = 2,
+  }) {
+    return _send(
+      parts: [
+        {'text': prompt},
+        {
+          'inline_data': {
+            'mime_type': mimeType,
+            'data': documentBase64,
+          }
+        },
+      ],
+      systemPrompt: systemPrompt,
+      maxOutputTokens: maxOutputTokens,
+      maxRetries: maxRetries,
+    );
+  }
+
+  static Future<String> _send({
+    required List<Map<String, dynamic>> parts,
+    String? systemPrompt,
+    required int maxOutputTokens,
+    required int maxRetries,
   }) async {
     if (_apiKey.isEmpty) {
       throw Exception(
@@ -39,9 +87,7 @@ class AIService {
       'contents': [
         {
           'role': 'user',
-          'parts': [
-            {'text': prompt}
-          ]
+          'parts': parts,
         }
       ],
       'generationConfig': {
@@ -66,11 +112,11 @@ class AIService {
         if (candidates == null || candidates.isEmpty) {
           throw Exception('Gemini returned no candidates.');
         }
-        final parts = candidates[0]['content']?['parts'] as List?;
-        if (parts == null || parts.isEmpty) {
+        final responseParts = candidates[0]['content']?['parts'] as List?;
+        if (responseParts == null || responseParts.isEmpty) {
           throw Exception('Gemini returned an empty response.');
         }
-        return parts[0]['text'] as String;
+        return responseParts[0]['text'] as String;
       }
 
       final isOverloaded = response.statusCode == 503;
