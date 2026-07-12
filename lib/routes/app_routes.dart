@@ -1,28 +1,29 @@
 import 'package:flutter/material.dart';
 
 import '../views/screens/employer_home_screen.dart';
-
 import '../views/screens/intern_screen.dart';
 import '../views/screens/splash_screen.dart';
 import '../views/screens/login_screen.dart';
 import '../views/screens/register_screen.dart';
+import '../views/screens/role_selection.dart';
 import '../views/widgets/auth_gate.dart';
 
 class AppRoutes {
-  static const String splash = '/';
-  static const String login = '/login';
-  static const String register = '/register';
-  static const String authGate = '/authGate';
-  static const String employerHome = '/employerHome';
-  static const String internHome = '/internHome';
+  static const String splash         = '/';
+  static const String login          = '/login';
+  static const String register       = '/register';
+  static const String authGate       = '/authGate';
+  static const String employerHome   = '/employerHome';
+  static const String internHome     = '/internHome';
+  static const String roleSelection  = '/roleSelection';
 
   static Map<String, WidgetBuilder> get routes => {
-    splash: (context) => const SplashScreen(),
-    login: (context) => const LoginScreen(),
-    register: (context) => const RegisterScreen(),
-    authGate: (context) => const AuthGate(),
-    employerHome: (context) => const EmployerHomeScreen(),
-    internHome: (context) => const InternHomeTab(),
+    splash:      (context) => const SplashScreen(),
+    login:       (context) => const LoginScreen(),
+    register:    (context) => const RegisterScreen(),
+    authGate:    (context) => const AuthGate(),
+    employerHome:(context) => const EmployerHomeScreen(),
+    internHome:  (context) => const InternScreen(),
   };
 
   static Route<dynamic> smoothRoute(Widget page) {

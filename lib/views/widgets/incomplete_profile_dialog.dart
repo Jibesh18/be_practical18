@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../themes/app_colors.dart';
 import '../../themes/app_textstyles.dart';
-import '../../viewmodels/dashboard_viewmodel.dart';
+import '../tabs/profile_tab.dart';
 
 /// Shows a dialog telling the user to complete their profile before
-/// applying, and navigates them to the Profile tab if they choose to.
+/// applying, and navigates them to the Profile screen if they choose to.
 void showIncompleteProfileDialog(BuildContext context) {
   showDialog(
     context: context,
@@ -24,8 +23,10 @@ void showIncompleteProfileDialog(BuildContext context) {
           style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
           onPressed: () {
             Navigator.pop(dialogContext);
-            Navigator.of(context).popUntil((route) => route.isFirst);
-            context.read<DashboardViewModel>().setIndex(4); // Profile tab
+
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ProfileTab()),
+            );
           },
           child: const Text('Go to Profile'),
         ),

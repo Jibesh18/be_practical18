@@ -1,3 +1,4 @@
+import 'package:be_practical18/views/screens/role_selection.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../routes/app_routes.dart';
@@ -52,25 +53,36 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // REPLACE the _loginWithGoogle method in login_screen.dart with this:
+
   Future<void> _loginWithGoogle() async {
     final authVM = context.read<AuthViewModel>();
-    final success = await authVM.signInWithGoogle(role: '');
+    final credential = await authVM.signInWithGoogleAndCheckRole();
     if (!mounted) return;
-    if (success) {
-      final role = await authVM.fetchUserRole();
-      if (!mounted) return;
-      if (role == 'employer') {
-        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.employerHome, (route) => false);
-      } else if (role == 'internSeeker') {
-        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.internHome, (route) => false);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Account not found. Please register first.')),
-        );
-      }
-    } else if (authVM.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(authVM.errorMessage!), backgroundColor: AppColors.error),
+    if (credential == null) return; // user cancelled
+
+    final user = credential.user;
+    if (user == null) return;
+
+    // Check if user already has a role (returning user)
+    final role = await authVM.fetchUserRole();
+    if (!mounted) return;
+
+    if (role == 'employer') {
+      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.employerHome, (_) => false);
+    } else if (role == 'internSeeker') {
+      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.internHome, (_) => false);
+    } else {
+      // New Google user — no role yet → show role selection screen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RoleSelectionScreen(
+            name: user.displayName ?? '',
+            email: user.email ?? '',
+            uid: user.uid,
+          ),
+        ),
       );
     }
   }
