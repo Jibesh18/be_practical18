@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/internship_model.dart';
 import '../models/application_model.dart';
+import 'package:flutter/foundation.dart';
 
 class InternshipService {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
@@ -54,24 +55,30 @@ class InternshipService {
     await batch.commit();
   }
 
-  // FIXED: Batch end — marks internship as ended AND closes undecided
-  // applications in one atomic write. Cannot be undone.
-  Future<void> endInternship(String internshipId) async {
-    final batch = firestore.batch();
-    batch.update(
-      firestore.collection('internships').doc(internshipId),
-      {'isActive': false, 'status': 'ended'},
-    );
+  Future<void> endInternship(String internshipId, String employerId) async {
+    await firestore.collection('internships').doc(internshipId).update({
+      'isActive': false,
+      'status': 'ended',
+    });
 
-    final appsSnap = await firestore
-        .collection('applications')
-        .where('internshipId', isEqualTo: internshipId)
-        .where('status', whereIn: ['pending', 'reviewed'])
-        .get();
-    for (final doc in appsSnap.docs) {
-      batch.update(doc.reference, {'status': 'closed'});
+    try {
+      final appsSnap = await firestore
+          .collection('applications')
+          .where('internshipId', isEqualTo: internshipId)
+          .where('employerId', isEqualTo: employerId)
+          .where('status', whereIn: ['pending', 'reviewed'])
+          .get();
+
+      if (appsSnap.docs.isNotEmpty) {
+        final batch = firestore.batch();
+        for (final doc in appsSnap.docs) {
+          batch.update(doc.reference, {'status': 'closed'});
+        }
+        await batch.commit();
+      }
+    } catch (e) {
+      debugPrint('endInternship: could not auto-close pending applications for $internshipId: $e');
     }
-    await batch.commit();
   }
 
   Stream<List<InternshipModel>> getAllInternships() {
