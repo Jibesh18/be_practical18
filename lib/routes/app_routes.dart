@@ -5,7 +5,6 @@ import '../views/screens/intern_screen.dart';
 import '../views/screens/splash_screen.dart';
 import '../views/screens/login_screen.dart';
 import '../views/screens/register_screen.dart';
-import '../views/screens/role_selection.dart';
 import '../views/widgets/auth_gate.dart';
 
 class AppRoutes {
