@@ -167,9 +167,8 @@ class EmployerViewModel extends ChangeNotifier {
   Future<void> toggleStatus(String internshipId, bool currentStatus) =>
       _service.toggleInternshipStatus(internshipId, !currentStatus);
 
-  // NEW: Permanently end an internship — cannot be undone or reopened.
-  Future<void> endInternship(String internshipId) =>
-      _service.endInternship(internshipId);
+  Future<void> endInternship(String internshipId, String employerId) =>
+      _service.endInternship(internshipId, employerId);
 
   Future<void> deleteInternship(String internshipId) =>
       _service.deleteInternship(internshipId);
