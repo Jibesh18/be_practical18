@@ -74,7 +74,7 @@ class _EmployerHomeScreenState extends State<EmployerHomeScreen> {
                       icon: Icon(Iconsax.briefcase), label: 'Listings'),
                   BottomNavigationBarItem(
                       icon: Icon(Iconsax.add_circle), label: 'Post'),
-                  // â† Changed from Applicants to AI tab
+                  // ← Changed from Applicants to AI tab
                   BottomNavigationBarItem(
                       icon: Icon(Icons.auto_awesome_rounded), label: 'AI Picks'),
                   BottomNavigationBarItem(
@@ -208,7 +208,7 @@ class _TopBar extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Good ${_greeting()}, $name‘‹',
+                    'Good ${_greeting()}, $name 👋',
                     style: AppTextStyles.bodyMedium.copyWith(
                       color: isDark
                           ? AppColors.darkTextSecondary
@@ -559,7 +559,7 @@ class _HiringFunnelCard extends StatelessWidget {
               GestureDetector(
                 onTap: onViewAll,
                 child: Text(
-                  'AI Picks’',
+                  'AI Picks',
                   style: AppTextStyles.labelSmall.copyWith(
                       color: AppColors.primary, fontWeight: FontWeight.w600),
                 ),
@@ -716,7 +716,7 @@ class _ActiveListingsCard extends StatelessWidget {
               GestureDetector(
                 onTap: onManageAll,
                 child: Text(
-                  'Manage all â†’',
+                  'Manage all',
                   style: AppTextStyles.labelSmall.copyWith(
                       color: AppColors.primary, fontWeight: FontWeight.w600),
                 ),
@@ -809,7 +809,7 @@ class _ListingRow extends StatelessWidget {
         ),
       ),
       // CHANGED: summary-only row, no toggle button
-      // Employer taps "Manage all â†’" to go to Listings tab for actions
+      // Employer taps "Manage all" to go to Listings tab for actions
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -845,7 +845,7 @@ class _ListingRow extends StatelessWidget {
                         .copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
                 Text(
-                  '${internship.type} Â· ${internship.duration} Â· ${internship.stipend}',
+                  '${internship.type} · ${internship.duration} · ${internship.stipend}',
                   style: AppTextStyles.bodySmall.copyWith(
                     color: isDark
                         ? AppColors.darkTextSecondary
@@ -913,7 +913,6 @@ class _MiniChip extends StatelessWidget {
   }
 }
 
-// â”€â”€ Recent Applicants Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _RecentApplicantsCard extends StatelessWidget {
   final List<ApplicationModel> apps;
@@ -956,7 +955,7 @@ class _RecentApplicantsCard extends StatelessWidget {
               GestureDetector(
                 onTap: onViewAll,
                 child: Text(
-                  'View all’',
+                  'View all',
                   style: AppTextStyles.labelSmall.copyWith(
                       color: AppColors.primary, fontWeight: FontWeight.w600),
                 ),
@@ -1075,7 +1074,7 @@ class _ApplicantRow extends StatelessWidget {
                     style: AppTextStyles.labelMedium
                         .copyWith(fontWeight: FontWeight.w700)),
                 Text(
-                  '${app.internshipTitle} Â· ${_timeAgo(app.appliedAt)}',
+                  '${app.internshipTitle} · ${_timeAgo(app.appliedAt)}',
                   style: AppTextStyles.bodySmall.copyWith(
                     color: isDark
                         ? AppColors.darkTextSecondary
@@ -1108,7 +1107,7 @@ class _ApplicantRow extends StatelessWidget {
   }
 }
 
-// â”€â”€ Shared Card Wrapper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Shared Card Wrapper ──────────────────────────────────────────────────────
 
 class _Card extends StatelessWidget {
   final Widget child;
@@ -1143,7 +1142,7 @@ class _Card extends StatelessWidget {
   }
 }
 
-// â”€â”€ All Applicants Screen (pushed from Recent Applicants "View all") â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── All Applicants Screen (pushed from Recent Applicants "View all") ───────────
 // Shows every applicant across all the employer's listings, grouped by listing.
 // Employer can Accept, Shortlist, or Reject from here.
 
@@ -1340,7 +1339,7 @@ class AllApplicantsScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-                          // Action buttons â€” only for undecided, non-closed applicants
+                          // Action buttons — only for undecided, non-closed applicants
                           if (!isClosed && !isDecided) ...[
                             const SizedBox(height: 12),
                             Row(

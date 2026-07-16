@@ -226,7 +226,7 @@ class _ListingCard extends StatelessWidget {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () {
-              vm.endInternship(listing.id);
+              vm.endInternship(listing.id, listing.postedBy);
               Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(

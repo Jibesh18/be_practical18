@@ -107,6 +107,45 @@ class EmployerSuggestionsTab extends StatelessWidget {
                     return StreamBuilder<List<ApplicationModel>>(
                       stream: vm.getApplicantsForInternship(listing.id, employerId),
                       builder: (context, appSnap) {
+                        // FIXED: this used to be `appSnap.data ?? []`, which
+                        // silently swallows any stream error (most likely a
+                        // missing Firestore composite index for the
+                        // internshipId + employerId + orderBy(appliedAt)
+                        // query) and just shows an empty applicant list with
+                        // no explanation — making the AI feature look broken
+                        // for reasons that were invisible on screen.
+                        if (appSnap.hasError) {
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Could not load applicants for "${listing.title}"',
+                                    style: AppTextStyles.bodyMedium.copyWith(
+                                      color: AppColors.error, fontWeight: FontWeight.w600,
+                                    )),
+                                const SizedBox(height: 6),
+                                Text('${appSnap.error}',
+                                    style: AppTextStyles.bodySmall.copyWith(color: AppColors.error)),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'If this mentions a missing index, click the link Firestore '
+                                      'gives in the debug console — it builds the index automatically.',
+                                  style: AppTextStyles.labelSmall.copyWith(
+                                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
                         final applicants = appSnap.data ?? [];
                         return _ListingAICard(
                           listing: listing,
